@@ -93,6 +93,7 @@ jobs:
           command -v nix-shell
           nix --version
           sudo systemctl is-active nix-daemon
+          test -S /nix/var/nix/daemon-socket/socket
           grep -q "experimental-features = nix-command flakes" /etc/nix/nix.conf
           nix flake metadata .
           nix build .#homeConfigurations.hrosten.activationPackage -L

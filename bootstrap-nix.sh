@@ -44,7 +44,11 @@ supports_systemd() {
 
 has_nix_daemon_service() {
   supports_systemd || return 1
-  systemctl list-unit-files --type=service 2>/dev/null | awk '{print $1}' | grep -Fxq "nix-daemon.service"
+  # Capture output first to avoid pipefail propagating a non-zero exit
+  # from systemctl (e.g. due to broken/masked units) to the pipeline.
+  local units
+  units="$(systemctl list-unit-files --type=service 2>/dev/null | awk '{print $1}')" || true
+  echo "$units" | grep -Fxq "nix-daemon.service"
 }
 
 selinux_enabled() {
@@ -129,7 +133,16 @@ install_nix() {
     sh <(curl_fetch "$installer_url") --yes --no-daemon
     ;;
   multi)
-    sh <(curl_fetch "$installer_url") --yes --daemon
+    # The Nix installer may fail to start nix-daemon.socket if systemd
+    # considers the service already active. This is harmless because
+    # restart_nix_daemon handles the daemon setup after install.
+    sh <(curl_fetch "$installer_url") --yes --daemon || {
+      if [ -x /nix/var/nix/profiles/default/bin/nix ]; then
+        echo "Info: Nix installer exited with an error but nix binary is present; continuing."
+      else
+        die "Nix installer failed"
+      fi
+    }
     ;;
   *)
     die "unknown installation type: '$install_type'"
@@ -160,13 +173,20 @@ install_nix() {
 }
 
 restart_nix_daemon() {
-  # Re-start nix-daemon
-  if has_nix_daemon_service; then
-    sudo systemctl restart nix-daemon
-    if ! sudo systemctl is-active --quiet nix-daemon; then
-      sudo systemctl status nix-daemon --no-pager || true
-      die "nix-daemon failed to start"
-    fi
+  has_nix_daemon_service || return 0
+
+  # Always do a clean stop/start. The Nix installer starts the daemon via
+  # socket activation, but the --daemon flag causes it to fork and delete
+  # the socket file, breaking new connections.
+  sudo systemctl stop nix-daemon.service nix-daemon.socket
+  sudo pkill -KILL -x nix-daemon 2>/dev/null || true
+  sudo systemctl reset-failed nix-daemon.service 2>/dev/null || true
+  sudo systemctl start nix-daemon.socket
+  sudo systemctl start nix-daemon.service
+
+  if [ ! -S /nix/var/nix/daemon-socket/socket ]; then
+    sudo systemctl status nix-daemon.socket nix-daemon.service --no-pager || true
+    die "nix-daemon socket file missing after restart"
   fi
 }
 
@@ -199,6 +219,18 @@ load_nix_environment() {
 }
 
 uninstall_nix() {
+  # Stop systemd services first, before removing /nix, so the unit files
+  # and daemon binary are still present for a clean shutdown.
+  if has_nix_daemon_service; then
+    sudo systemctl stop nix-daemon.socket nix-daemon.service
+    sudo systemctl disable nix-daemon.socket nix-daemon.service
+    sudo find /etc/systemd -iname "*nix-daemon*" -delete
+    sudo find /usr/lib/systemd -iname "*nix-daemon*" -delete
+    sudo systemctl daemon-reload
+    sudo systemctl reset-failed
+  fi
+  # Kill any remaining nix-daemon processes that systemd didn't clean up.
+  sudo pkill -KILL -x nix-daemon 2>/dev/null || true
   # https://github.com/NixOS/nix/issues/1402
   if grep -qE '^nixbld[0-9]*:' /etc/passwd; then
     while IFS=: read -r nix_user _; do
@@ -235,14 +267,6 @@ uninstall_nix() {
   [ -f "$HOME/.profile" ] && sed -i "/\/nix/d" "$HOME/.profile"
   [ -f "$HOME/.bash_profile" ] && sed -i "/\/nix/d" "$HOME/.bash_profile"
   [ -f "$HOME/.bashrc" ] && sed -i "/\/nix/d" "$HOME/.bashrc"
-  if has_nix_daemon_service; then
-    sudo systemctl stop nix-daemon nix-daemon.socket
-    sudo systemctl disable nix-daemon nix-daemon.socket
-    sudo find /etc/systemd -iname "*nix-daemon*" -delete
-    sudo find /usr/lib/systemd -iname "*nix-daemon*" -delete
-    sudo systemctl daemon-reload
-    sudo systemctl reset-failed
-  fi
   unset NIX_PATH
 }
 
@@ -257,7 +281,15 @@ outro() {
     die "failed reading installed nixpkgs version"
   fi
   echo ""
-  echo "Open a new terminal for the changes to take impact"
+  if [ -f /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
+    echo "To activate nix in this shell, run:"
+    echo "  . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh"
+  elif [ -f "$HOME/.nix-profile/etc/profile.d/nix.sh" ]; then
+    echo "To activate nix in this shell, run:"
+    echo "  . $HOME/.nix-profile/etc/profile.d/nix.sh"
+  else
+    echo "Open a new terminal for the changes to take effect."
+  fi
   echo ""
 }
 
@@ -298,7 +330,9 @@ main() {
   install_prerequisites "$package_manager"
   uninstall_nix
   install_nix "$install_type"
-  [ "$install_type" = "multi" ] && restart_nix_daemon
+  if [ "$install_type" = "multi" ]; then
+    restart_nix_daemon
+  fi
   load_nix_environment "$install_type"
   require_command "nix-shell"
   outro
