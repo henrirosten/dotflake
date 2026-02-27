@@ -11,6 +11,7 @@
       firefox
       flameshot
       gedit
+      git-cola
       google-chrome
       gnome-terminal
       gnome-tweaks
