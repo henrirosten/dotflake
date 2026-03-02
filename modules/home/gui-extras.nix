@@ -1,16 +1,4 @@
 { pkgs, lib, ... }:
-let
-  git-cola-dark = pkgs.symlinkJoin {
-    name = "git-cola-dark";
-    paths = [ pkgs.git-cola ];
-    nativeBuildInputs = [ pkgs.makeWrapper ];
-    postBuild = ''
-      wrapProgram "$out/bin/git-cola" \
-        --set QT_STYLE_OVERRIDE adwaita-dark \
-        --set QT_QPA_PLATFORMTHEME gtk3
-    '';
-  };
-in
 {
   imports = [
     ./vscode.nix
@@ -23,13 +11,13 @@ in
       firefox
       flameshot
       gedit
-      git-cola-dark
-      google-chrome
       gnome-terminal
       gnome-tweaks
+      google-chrome
       keepass
       libreoffice-fresh
       meld
+      sourcegit
       wireshark
     ];
   };
