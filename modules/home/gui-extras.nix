@@ -28,7 +28,7 @@ in
       gnome-terminal
       gnome-tweaks
       keepass
-      libreoffice
+      libreoffice-fresh
       meld
       wireshark
     ];
