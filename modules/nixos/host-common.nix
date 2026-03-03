@@ -1,10 +1,18 @@
 # Common host configuration shared between all NixOS machines
-{ config, inputs, ... }:
 {
+  config,
+  lib,
+  inputs,
+  pkgs,
+  ...
+}:
+{
+  environment.systemPackages = [ pkgs.nmap ];
+
   boot.loader = {
-    systemd-boot.enable = true;
-    systemd-boot.configurationLimit = 5;
-    efi.canTouchEfiVariables = true;
+    systemd-boot.enable = lib.mkDefault true;
+    systemd-boot.configurationLimit = lib.mkDefault 5;
+    efi.canTouchEfiVariables = lib.mkDefault true;
   };
 
   # disable ssh askpass

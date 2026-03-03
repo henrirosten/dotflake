@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Overview
 
 This is a Nix flake-based configuration repository for:
-- NixOS hosts (`x1`, `t480`, and a VM-focused `generic` profile)
+- NixOS hosts (`x1`, `t480`, `nocturn`, and a VM-focused `generic` profile)
 - Standalone home-manager configuration (`.#hrosten`) for non-NixOS systems
 
 ## Commands
@@ -39,12 +39,20 @@ nix flake check --option allow-import-from-derivation false --no-build
 ```bash
 nixos-rebuild build --flake .#x1
 nixos-rebuild build --flake .#t480
+nixos-rebuild build --flake .#nocturn
 ```
 
-**Apply NixOS configuration**:
+**Apply NixOS configuration** (local):
 ```bash
 sudo nixos-rebuild switch --flake .#x1
 sudo nixos-rebuild switch --flake .#t480
+```
+
+**Deploy to remote host** (resolves IP via MAC/ARP):
+```bash
+./scripts/deploy.sh nocturn
+./scripts/deploy.sh nocturn dry-activate
+./scripts/deploy.sh --list
 ```
 
 **Apply standalone home-manager configuration** (for non-NixOS like Ubuntu):
@@ -63,12 +71,13 @@ nix run .#generic-vm
 
 - `flake.nix` - Main entry point; delegates output construction to `flake/` helpers
 - `flake/` - Split flake output builders (`apps-vm.nix`, `nixos-configurations.nix`, `home-configurations.nix`, `checks.nix`, `pre-commit-check.nix`, `formatter.nix`, `dev-shells.nix`)
-- `hosts/` - Per-machine configurations (`x1`, `t480`, `generic`), each with `configuration.nix` and `hardware-configuration.nix`
+- `hosts/` - Per-machine configurations (`x1`, `t480`, `nocturn`, `generic`), each with `configuration.nix` and `hardware-configuration.nix`
 - `users/` - User-specific NixOS modules defining user accounts (name, username, email, ssh keys, shell, groups)
 - `users/hrosten/home.nix` - User profile composition for hrosten home-manager setup
-- `modules/nixos/` - Reusable NixOS modules (`common-nix`, `gui`, `host-common`, `laptop`, `ssh`, `remotebuild`)
+- `modules/nixos/` - Reusable NixOS modules (`common-nix`, `gui`, `host-common`, `laptop`, `ssh`, `remotebuild`, `gnome-freeze-watchdog`)
 - `modules/home/` - Reusable home-manager modules (`bash`, `zsh`, `git`, `vim`, `starship`, `ssh-conf`, `gui-extras`, `vscode`, `shell-common`, `codex-cli`)
 - `scripts/run-vm.sh` - VM runner template used by flake VM apps
+- `scripts/deploy.sh` - Remote deployment script using MAC-based host discovery
 - `bootstrap-nix.sh` - Nix installer helper for non-NixOS systems
 
 NixOS modules are exported via `outputs.nixosModules`. Home-manager modules are exported via `outputs.homeModules`.

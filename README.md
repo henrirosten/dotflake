@@ -10,6 +10,7 @@ Nix flake repository for:
 |------|---------|
 | `x1` | ThinkPad X1 Carbon |
 | `t480` | ThinkPad T480 |
+| `nocturn` | Headless server (Ryzen 9 5950X, 64 GB RAM) |
 | `generic` | VM-focused profile used for local and CI testing |
 
 ## Quick Start
@@ -57,12 +58,24 @@ Build:
 ```bash
 nixos-rebuild build --flake .#x1
 nixos-rebuild build --flake .#t480
+nixos-rebuild build --flake .#nocturn
 ```
 
-Apply:
+Apply (local):
 ```bash
 sudo nixos-rebuild switch --flake .#x1
 sudo nixos-rebuild switch --flake .#t480
+```
+
+## Remote Deployment
+
+`scripts/deploy.sh` deploys to remote hosts by resolving their IP via MAC address lookup (ARP cache, falling back to nmap subnet scan).
+
+```bash
+./scripts/deploy.sh nocturn              # deploy (switch)
+./scripts/deploy.sh nocturn dry-activate # dry run
+./scripts/deploy.sh --list               # show host IPs
+./scripts/deploy.sh --help               # full usage
 ```
 
 ## VM Apps
@@ -159,6 +172,7 @@ modules/nixos/               # Reusable NixOS modules
 modules/home/                # Reusable Home Manager modules
 users/                       # User-specific module data and HM composition
 scripts/run-vm.sh            # VM runner template used by flake VM apps
+scripts/deploy.sh            # Remote deployment via MAC-based host discovery
 bootstrap-nix.sh             # Nix bootstrap helper script
 ```
 
