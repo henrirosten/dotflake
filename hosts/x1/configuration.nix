@@ -22,6 +22,7 @@ in
     host-common
     laptop
     gui
+    gnome-freeze-watchdog
     ssh
     hrosten.nixosModule
   ]);
@@ -30,9 +31,12 @@ in
 
   # Intel iGPU freeze workaround on this hardware generation:
   # keep cursor/mouse responsive while GNOME input/UI stops.
+  # Extra debug flags are temporary and can be removed after logs are collected.
   boot.kernelParams = [
     "i915.enable_psr=0"
     "i915.enable_dc=0"
+    "drm.debug=0x1e"
+    "log_buf_len=4M"
   ];
 
   services.avahi.enable = false;

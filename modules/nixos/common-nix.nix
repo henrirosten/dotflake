@@ -5,6 +5,77 @@
 }:
 let
   asGB = size: toString (size * 1024 * 1024 * 1024);
+  gnomeFreezeDebug = pkgs.writeShellApplication {
+    name = "gnome-freeze-debug";
+    runtimeInputs = with pkgs; [
+      gnugrep
+      sudo
+      systemd
+    ];
+    text = ''
+      set -euo pipefail
+
+      boot="''${1:--1}"
+
+      if [ "$boot" = "-h" ] || [ "$boot" = "--help" ]; then
+        cat <<'EOF'
+      Usage: gnome-freeze-debug [BOOT]
+
+      Collect useful logs for GNOME freezes.
+      BOOT defaults to -1 (the previous boot), use 0 for current boot.
+      EOF
+        exit 0
+      fi
+
+      run_journalctl() {
+        if [ "$EUID" -ne 0 ]; then
+          if sudo -n true >/dev/null 2>&1; then
+            sudo -n journalctl "$@"
+          else
+            journalctl "$@"
+          fi
+        else
+          journalctl "$@"
+        fi
+      }
+
+      run_coredumpctl() {
+        if [ "$EUID" -ne 0 ]; then
+          if sudo -n true >/dev/null 2>&1; then
+            sudo -n coredumpctl "$@"
+          else
+            coredumpctl "$@"
+          fi
+        else
+          coredumpctl "$@"
+        fi
+      }
+
+      section() {
+        printf "\n=== %s ===\n" "$1"
+      }
+
+      section "Kernel GPU and OOM signals (boot=$boot)"
+      if ! run_journalctl -b "$boot" -k --no-pager | grep -Ei "i915|drm|gpu|hang|reset|lockup|oom"; then
+        echo "No matching lines."
+      fi
+
+      section "GNOME stack signals (boot=$boot)"
+      if ! run_journalctl -b "$boot" --no-pager | grep -Ei "gnome-shell|mutter|gdm|wayland|xorg|oomd"; then
+        echo "No matching lines."
+      fi
+
+      section "Suspend and resume timeline (boot=$boot)"
+      if ! run_journalctl -b "$boot" --no-pager | grep -Ei "suspend|resume|s2idle|deep|freeze|thaw"; then
+        echo "No matching lines."
+      fi
+
+      section "Relevant coredumps (boot=$boot)"
+      if ! run_coredumpctl list --boot "$boot" | grep -Ei "gnome-shell|mutter|xorg|gdm"; then
+        echo "No matching lines."
+      fi
+    '';
+  };
 in
 {
   system.stateVersion = stateVersion;
@@ -13,7 +84,12 @@ in
   boot.blacklistedKernelModules = [ "pcspkr" ];
   hardware.enableAllFirmware = true;
   nixpkgs.config.allowUnfree = true;
-  services.journald.extraConfig = "SystemMaxUse=1G";
+  services.journald = {
+    storage = "persistent";
+    extraConfig = ''
+      SystemMaxUse=1G
+    '';
+  };
 
   nix = {
     settings = {
@@ -96,6 +172,7 @@ in
   # Minimal system packages - user tools managed by home-manager
   environment.systemPackages = with pkgs; [
     git
+    gnomeFreezeDebug
     nixVersions.latest
   ];
 
@@ -107,6 +184,7 @@ in
   };
   # https://wiki.archlinux.org/title/Zram#Optimizing_swap_on_zram:
   boot.kernel.sysctl = {
+    "kernel.sysrq" = 1;
     "vm.swappiness" = 180;
     "vm.watermark_boost_factor" = 0;
     "vm.watermark_scale_factor" = 125;
