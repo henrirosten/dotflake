@@ -11,7 +11,7 @@ in
 
   home.sessionVariables = {
     XDG_DATA_DIRS = "$HOME/.nix-profile/share:\${XDG_DATA_DIRS:-/usr/local/share:/usr/share}";
-    # Shared history file for bash and zsh
+    # Shared history file for bash and zsh (preserves existing history)
     HISTFILE = historyFile;
   };
 

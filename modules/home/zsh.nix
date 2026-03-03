@@ -26,7 +26,8 @@
       size = 1000000;
       save = 1000000;
       extended = false;
-      share = false;
+      # Keep shared history append-safe across multiple shells.
+      share = true;
     };
 
     defaultKeymap = "emacs";
