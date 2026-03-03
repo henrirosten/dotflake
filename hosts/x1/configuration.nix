@@ -28,6 +28,13 @@ in
 
   networking.hostName = "x1";
 
+  # Intel iGPU freeze workaround on this hardware generation:
+  # keep cursor/mouse responsive while GNOME input/UI stops.
+  boot.kernelParams = [
+    "i915.enable_psr=0"
+    "i915.enable_dc=0"
+  ];
+
   services.avahi.enable = false;
   system.autoUpgrade.dates = "weekly";
 
