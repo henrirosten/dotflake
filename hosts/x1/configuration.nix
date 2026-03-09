@@ -22,7 +22,6 @@ in
     host-common
     laptop
     gui
-    gnome-freeze-watchdog
     ssh
     hrosten.nixosModule
   ]);
