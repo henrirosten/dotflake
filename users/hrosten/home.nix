@@ -43,7 +43,7 @@ in
       openfortivpn
       openvpn
       ripgrep
-      sbomnix
+      inputs.sbomnix.packages.${pkgs.system}.default
       tree
       wget
       nerd-fonts.fira-code

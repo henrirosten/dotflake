@@ -23,6 +23,11 @@
       url = "github:sadjow/codex-cli-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    sbomnix = {
+      url = "github:tiiuae/sbomnix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
