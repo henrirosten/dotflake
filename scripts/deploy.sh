@@ -9,6 +9,10 @@ declare -A HOST_MACS=(
   [nocturn]="f0:2f:74:15:d9:a9"
 )
 
+log() {
+  printf "[deploy] %s\n" "$*" >&2
+}
+
 resolve_ip() {
   local mac="$1"
   ip neigh | awk -v mac="$mac" 'tolower($0) ~ tolower(mac) {print $1; exit}'
@@ -16,8 +20,10 @@ resolve_ip() {
 
 run_nmap() {
   if command -v nmap >/dev/null 2>&1; then
+    log "Using nmap from PATH"
     nmap "$@"
   else
+    log "Using nix shell fallback for nmap"
     nix shell nixpkgs#nmap --command nmap "$@"
   fi
 }
@@ -26,8 +32,10 @@ resolve_all() {
   local scanned=false
   for h in "${!HOST_MACS[@]}"; do
     local addr
+    log "Checking ARP cache for $h (${HOST_MACS[$h]})"
     addr=$(resolve_ip "${HOST_MACS[$h]}")
     if [[ -z $addr ]] && [[ $scanned == false ]]; then
+      log "Host missing from ARP cache, scanning $SUBNET"
       run_nmap -sn "$SUBNET" >/dev/null 2>&1
       scanned=true
       addr=$(resolve_ip "${HOST_MACS[$h]}")
@@ -123,10 +131,21 @@ if [[ $# -gt 0 ]]; then
 fi
 
 mac="${HOST_MACS[$host]}"
+log "Preparing deployment"
+log "Host: $host"
+log "Action: $action"
+log "SSH user: $SSH_USER"
+log "Subnet: $SUBNET"
+log "MAC: $mac"
+if [[ $# -gt 0 ]]; then
+  log "Extra nixos-rebuild args: $*"
+fi
+
+log "Checking ARP cache for $host"
 addr=$(resolve_ip "$mac")
 
 if [[ -z $addr ]]; then
-  echo "Host not in ARP cache, scanning $SUBNET ..."
+  log "Host not in ARP cache, scanning $SUBNET"
   run_nmap -sn "$SUBNET" >/dev/null 2>&1
   addr=$(resolve_ip "$mac")
 fi
@@ -136,7 +155,9 @@ if [[ -z $addr ]]; then
   exit 1
 fi
 
-echo "Deploying .#$host to $SSH_USER@$addr ($mac) [action: $action]"
+log "Resolved $host to $addr"
+log "Deploying .#$host to $SSH_USER@$addr ($mac)"
+log "Running: nixos-rebuild $action --flake .#$host --target-host $SSH_USER@$addr --sudo${*:+ $*}"
 nixos-rebuild "$action" \
   --flake ".#$host" \
   --target-host "$SSH_USER@$addr" \
