@@ -18,7 +18,11 @@
       "sd_mod"
     ];
     initrd.kernelModules = [ ];
-    kernelModules = [ "kvm-amd" ];
+    # The onboard Realtek NIC occasionally fails to autoload r8169 after boot.
+    kernelModules = [
+      "kvm-amd"
+      "r8169"
+    ];
     extraModulePackages = [ ];
   };
 
