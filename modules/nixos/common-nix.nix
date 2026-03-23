@@ -83,6 +83,10 @@ in
     ];
   };
   systemd.user.extraConfig = "DefaultLimitNOFILE=8192";
+  systemd.tmpfiles.rules = [
+    # Codex currently hardcodes /usr/bin/bwrap on Linux.
+    "L+ /usr/bin/bwrap - - - - ${pkgs.bubblewrap}/bin/bwrap"
+  ];
 
   programs.zsh.enable = true;
   environment = {
