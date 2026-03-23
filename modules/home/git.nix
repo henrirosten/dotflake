@@ -27,6 +27,7 @@
   programs.git = {
     enable = true;
     package = pkgs.gitFull;
+    signing.format = "openpgp";
     settings = {
       user = {
         inherit (user) name;
