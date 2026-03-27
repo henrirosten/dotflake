@@ -61,6 +61,10 @@ in
   systemd.user.startServices = "sd-switch";
   programs = {
     home-manager.enable = true;
+    direnv = {
+      enable = true;
+      nix-direnv.enable = true;
+    };
     # show what package provides a commands when it's not found
     nix-index = {
       enable = true;
