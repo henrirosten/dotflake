@@ -4,6 +4,14 @@
 # Disable ctrl-s (pause terminal output)
 stty -ixon 2>/dev/null
 
+own-minhist() {
+  local histfile="${HISTFILE:-$HOME/.bash_eternal_history}"
+  cp "$histfile" "$histfile.old"
+  nl "$histfile" | sort -k2 -k 1,1nr | uniq -f1 | sort -n | cut -f2 >"$histfile.tmp"
+  mv "$histfile.tmp" "$histfile"
+  echo "Deduplicated $histfile. Old history in $histfile.old"
+}
+
 own-allfiles() {
   sudo find / -type f ! -path "/dev/*" ! -path "/sys/*" ! -path "/proc/*" ! -path "/run/*" |
     tee "$HOME/allfiles.txt" >/dev/null
@@ -30,7 +38,7 @@ own-find-links() {
   else
     findpath="$1"
   fi
-  find "$findpath" -type l -exec echo -n "{} -> " \; -exec readlink -f {} \;
+  find "$findpath" -type l -printf '%p -> ' -exec readlink -f {} \;
 }
 
 own-nix-store-symlinks() {
@@ -50,8 +58,12 @@ own-nix-info() {
   echo " - nixpkgs version: $(nix-instantiate --eval -E '(import <nixpkgs> {}).lib.version')"
 }
 
+own-nix-free() {
+  local gb="${1:-100}"
+  nix-collect-garbage -d --max-freed "$((gb * 1024 * 1024 * 1024))"
+}
+
 own-nix-clean() {
-  nix-collect-garbage
   nix-collect-garbage -d
   # notify if it seems some symlinks prevent full cleanup
   if own-nix-store-symlinks >/dev/null 2>&1; then
@@ -67,7 +79,64 @@ own-nix-clean() {
   own-find-largest /nix/var/log/nix/drvs/ 10
 }
 
-own-journal-clear() {
+own-journal-clean() {
   sudo journalctl --rotate
   sudo journalctl --vacuum-time=1s
+}
+
+own-tmp-clean() {
+  if ! command -v fuser >/dev/null 2>&1; then
+    echo "Error: fuser not found (install psmisc)" >&2
+    return 1
+  fi
+  find /tmp -mindepth 1 ! -exec fuser -s {} \; -delete 2>/dev/null
+}
+
+own-nix-diff() {
+  nix profile diff-closures --profile "${1:-/nix/var/nix/profiles/system}"
+}
+
+own-nix-why() {
+  nix-store --query --roots "$1"
+}
+
+own-nix-size() {
+  echo "Nix store:"
+  du -sh /nix/store
+  echo ""
+  echo "Current system profile closure:"
+  nix path-info -Sh /nix/var/nix/profiles/system 2>/dev/null
+}
+
+own-disk-usage() {
+  echo "Nix store:"
+  du -sh /nix/store 2>/dev/null
+  echo "Journal:"
+  journalctl --disk-usage 2>/dev/null
+  echo "Tmp:"
+  du -sh /tmp 2>/dev/null
+  echo "Home:"
+  du -sh "$HOME" 2>/dev/null
+}
+
+own-listening() {
+  ss -tlnp
+}
+
+own-stale-services() {
+  # Find processes using deleted nix store paths (common after nixos-rebuild)
+  sudo grep -rl '/nix/store.*deleted' /proc/*/maps 2>/dev/null |
+    cut -d/ -f3 |
+    sort -un |
+    while read -r pid; do
+      printf "%-8s %s\n" "$pid" "$(cat /proc/"$pid"/comm 2>/dev/null)"
+    done
+}
+
+own-backup() {
+  cp -a "$1" "$1.$(date +%Y-%m-%d)"
+}
+
+own-recent() {
+  find "${1:-.}" -type f -mtime "-${2:-1}" -printf '%T+ %p\n' | sort -r
 }
