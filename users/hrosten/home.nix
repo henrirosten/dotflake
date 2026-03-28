@@ -48,7 +48,7 @@ in
       wget
       nerd-fonts.fira-code
       nerd-fonts.droid-sans-mono
-      pstree
+      psmisc
       source-code-pro
     ];
     sessionVariables = {
