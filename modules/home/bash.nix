@@ -1,4 +1,4 @@
-_: {
+{
   imports = [ ./shell-common.nix ];
 
   programs.bash = {

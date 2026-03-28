@@ -1,5 +1,4 @@
 # Shared shell configuration for bash and zsh
-_:
 let
   historyFile = "$HOME/.bash_eternal_history";
 in
