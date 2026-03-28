@@ -48,14 +48,37 @@ own-nix-store-symlinks() {
 }
 
 own-nix-info() {
+  local nixpkgs_version
+  local nix_path_display
+  local root_channels
+
+  nixpkgs_version="$(nix-instantiate --eval -E '(import <nixpkgs> {}).lib.version' 2>/dev/null || true)"
+  nix_path_display="${NIX_PATH:-<unset>}"
+  if sudo -n true >/dev/null 2>&1; then
+    root_channels="$(sudo -n "$(command -v nix-channel)" --list)"
+  else
+    root_channels="<sudo required>"
+  fi
+
   echo "nix-info:"
   nix-info -m
-  echo "nix-channel:"
-  echo " - root: $(sudo "$(which nix-channel)" --list)"
-  echo " - $USER: $(nix-channel --list)"
   echo ""
-  echo "nixpkgs:"
-  echo " - nixpkgs version: $(nix-instantiate --eval -E '(import <nixpkgs> {}).lib.version')"
+  echo "nix resolution:"
+  echo " - NIX_PATH: $nix_path_display"
+  if [ -n "$nixpkgs_version" ]; then
+    echo " - current <nixpkgs> version: $nixpkgs_version"
+    if [ -n "${NIX_PATH:-}" ]; then
+      echo " - current <nixpkgs> source: NIX_PATH / shell environment"
+    else
+      echo " - current <nixpkgs> source: default nixPath search order"
+    fi
+  else
+    echo " - current <nixpkgs> version: unavailable"
+  fi
+  echo ""
+  echo "nix-channel (legacy subscriptions):"
+  echo " - root: $root_channels"
+  echo " - $USER: $(nix-channel --list)"
 }
 
 own-nix-free() {
