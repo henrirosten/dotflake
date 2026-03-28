@@ -38,17 +38,49 @@ jobs:
         run: nix flake show --all-systems
       - name: Run nix flake check (no build)
         run: nix flake check --option allow-import-from-derivation false --no-build
-  build_matrix:
-    name: "build"
+  discover_nixos_configurations:
+    name: Discover NixOS configurations
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      targets: ${{ steps.discover.outputs.targets }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Install nix
+        uses: cachix/install-nix-action@1ca7d21a94afc7c957383a2d217460d980de4934 # v31.10.1
+        with:
+          extra_nix_config: |
+            extra-trusted-substituters = http://127.0.0.1
+      - name: Enable Magic Nix Cache
+        uses: DeterminateSystems/magic-nix-cache-action@565684385bcd71bad329742eefe8d12f2e765b39 # v13
+        with:
+          use-flakehub: false
+      - name: Discover targets
+        id: discover
+        run: |
+          set -euo pipefail
+          targets="$(nix eval --json --apply 'builtins.attrNames' .#nixosConfigurations)"
+          echo "targets=$targets" >> "$GITHUB_OUTPUT"
+          echo "Discovered nixosConfigurations: $targets"
+  nixos_build_matrix:
+    name: "nixos build"
+    needs:
+      - check
+      - discover_nixos_configurations
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
     permissions:
       contents: read
       id-token: write
     strategy:
       fail-fast: false
       matrix:
-        target: [x1, t480]
+        target: ${{ fromJson(needs.discover_nixos_configurations.outputs.targets) }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -64,4 +96,14 @@ jobs:
         with:
           use-flakehub: false
       - name: Build target '${{ matrix.target }}'
-        run: nix build .#nixosConfigurations.${{ matrix.target }}.config.system.build.toplevel -L
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          case "$TARGET" in
+            (*[!A-Za-z0-9_-]*|'')
+              echo "Invalid nixosConfigurations target: $TARGET" >&2
+              exit 1
+              ;;
+          esac
+          nix build ".#nixosConfigurations.${TARGET}.config.system.build.toplevel" -L
