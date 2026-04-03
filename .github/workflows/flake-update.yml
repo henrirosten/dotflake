@@ -57,7 +57,7 @@ jobs:
 
       - name: Run x1 VM codex smoke check
         if: steps.changes.outputs.changed == 'true'
-        run: nix build .#checks.x86_64-linux.x1-vm-codex-smoke -L
+        run: nix build .#checks.x86_64-linux.x1-vm-smoke -L
 
       - name: Generate pull request body
         id: pr_body
@@ -73,7 +73,7 @@ jobs:
           Automated flake input update.
 
           - Updated all flake inputs with `nix flake update`.
-          - Verified `nix build .#checks.x86_64-linux.x1-vm-codex-smoke -L`.
+          - Verified `nix build .#checks.x86_64-linux.x1-vm-smoke -L`.
 
           ### Updated Inputs
           EOF
@@ -139,7 +139,7 @@ jobs:
           echo "::warning::If using GITHUB_TOKEN fallback, enable 'Allow GitHub Actions to create and approve pull requests' under Settings > Actions > General."
           echo "::warning::Manual PR URL: https://github.com/${REPOSITORY}/compare/${DEFAULT_BRANCH}...chore/automated-flake-update?expand=1"
 
-  x1-vm-codex-smoke:
+  x1-vm-smoke:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 360
@@ -167,4 +167,4 @@ jobs:
           use-flakehub: false
 
       - name: Run x1 VM codex smoke check
-        run: nix build .#checks.x86_64-linux.x1-vm-codex-smoke -L
+        run: nix build .#checks.x86_64-linux.x1-vm-smoke -L

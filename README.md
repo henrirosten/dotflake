@@ -109,6 +109,7 @@ Environment overrides:
 - `NIX_DISK_IMAGE` (default: `./<vm-name>.qcow2`)
 - `VM_HOST_SHARE_DIR` (same effect as `--share-dir`)
 - `CODEX_HOST_AUTH_FILE` (default: `$HOME/.codex/auth.json`)
+- `CLAUDE_HOST_AUTH_FILE` (default: `$HOME/.claude/.credentials.json`)
 
 ### Run Graphical Apps On `generic-vm` Over SSH
 

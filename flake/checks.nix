@@ -24,8 +24,8 @@ forAllSystems (
     pre-commit-check = mkPreCommitCheck system;
   }
   // lib.optionalAttrs (system == defaultSystem) {
-    x1-vm-codex-smoke = pkgs.testers.runNixOSTest {
-      name = "x1-vm-codex-smoke";
+    x1-vm-smoke = pkgs.testers.runNixOSTest {
+      name = "x1-vm-smoke";
       node.specialArgs = testSpecialArgs;
       node.pkgsReadOnly = false;
       nodes.machine =
@@ -37,6 +37,7 @@ forAllSystems (
           systemd.services."home-manager-hrosten".enable = lib.mkForce false;
           environment.systemPackages = lib.mkAfter [
             inputs.codex-cli-nix.packages.${system}.default
+            inputs.nix-claude-code.packages.${system}.default
           ];
         };
       testScript = ''
@@ -46,6 +47,8 @@ forAllSystems (
         machine.succeed("test -z \"$(systemctl --failed --plain --no-legend)\"")
         machine.succeed("command -v codex")
         machine.succeed("codex --help >/dev/null 2>&1 || codex-cli --help >/dev/null 2>&1")
+        machine.succeed("command -v claude")
+        machine.succeed("claude --version")
       '';
     };
   }

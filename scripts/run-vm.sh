@@ -1,30 +1,38 @@
 #!/usr/bin/env bash
 
 cleanup_disk=@defaultCleanupDisk@
-bootstrap_codex_auth=@bootstrapCodexAuth@
+bootstrap_auth=@bootstrapAuth@
 ram_mb="@defaultRamMb@"
 cpus="@defaultCpus@"
 disk_size="@defaultDiskSize@"
 disk_image="${NIX_DISK_IMAGE:-@defaultDiskImage@}"
 host_codex_auth_file="${CODEX_HOST_AUTH_FILE:-$HOME/.codex/auth.json}"
+host_claude_auth_file="${CLAUDE_HOST_AUTH_FILE:-$HOME/.claude/.credentials.json}"
 host_share_dir="${VM_HOST_SHARE_DIR:-}"
-managed_codex_bootstrap_dir=0
-codex_bootstrap_dir=""
+managed_auth_bootstrap_dir=0
+auth_bootstrap_dir=""
 override_ram=0
 override_cpus=0
 override_disk_size=0
 
 umask 077
 
-if [ "$bootstrap_codex_auth" -eq 1 ]; then
-  codex_bootstrap_dir="$(@mktemp@ -d -t @vmName@-codex-auth.XXXXXX)"
-  managed_codex_bootstrap_dir=1
+if [ "$bootstrap_auth" -eq 1 ]; then
+  auth_bootstrap_dir="$(@mktemp@ -d -t @vmName@-auth-bootstrap.XXXXXX)"
+  managed_auth_bootstrap_dir=1
   if [ -f "$host_codex_auth_file" ]; then
-    install -m 600 -- "$host_codex_auth_file" "$codex_bootstrap_dir/auth.json"
+    install -m 600 -- "$host_codex_auth_file" "$auth_bootstrap_dir/codex-auth.json"
+  fi
+  if [ -f "$host_claude_auth_file" ]; then
+    install -m 600 -- "$host_claude_auth_file" "$auth_bootstrap_dir/claude-credentials.json"
+  fi
+  host_claude_settings="${CLAUDE_HOST_SETTINGS_FILE:-$HOME/.claude/settings.json}"
+  if [ -f "$host_claude_settings" ]; then
+    install -m 600 -- "$host_claude_settings" "$auth_bootstrap_dir/claude-settings.json"
   fi
 fi
-if [ "$bootstrap_codex_auth" -eq 1 ] && [ -n "$codex_bootstrap_dir" ]; then
-  export CODEX_VM_BOOTSTRAP_DIR="$codex_bootstrap_dir"
+if [ "$bootstrap_auth" -eq 1 ] && [ -n "$auth_bootstrap_dir" ]; then
+  export AUTH_VM_BOOTSTRAP_DIR="$auth_bootstrap_dir"
 fi
 
 while [ "$#" -gt 0 ]; do
@@ -71,7 +79,8 @@ Options:
 Environment:
   NIX_DISK_IMAGE     Override disk image path (default: @defaultDiskImage@)
   VM_HOST_SHARE_DIR  Host directory shared to guest at /mnt/host-share
-  CODEX_HOST_AUTH_FILE  Host auth file for one-way VM bootstrap (default: $HOME/.codex/auth.json)
+  CODEX_HOST_AUTH_FILE   Host Codex auth file for one-way VM bootstrap (default: $HOME/.codex/auth.json)
+  CLAUDE_HOST_AUTH_FILE  Host Claude auth file for one-way VM bootstrap (default: $HOME/.claude/.credentials)
 EOF
     exit 0
     ;;
@@ -132,11 +141,13 @@ fi
 
 cleanup() {
   status="$?"
-  if [ "$managed_codex_bootstrap_dir" -eq 1 ] && [ -n "$codex_bootstrap_dir" ]; then
-    if [ -f "$codex_bootstrap_dir/auth.json" ]; then
-      shred -u -- "$codex_bootstrap_dir/auth.json" 2>/dev/null || rm -f -- "$codex_bootstrap_dir/auth.json"
-    fi
-    rm -rf -- "$codex_bootstrap_dir"
+  if [ "$managed_auth_bootstrap_dir" -eq 1 ] && [ -n "$auth_bootstrap_dir" ]; then
+    for f in "$auth_bootstrap_dir"/codex-auth.json "$auth_bootstrap_dir"/claude-credentials.json "$auth_bootstrap_dir"/claude-settings.json; do
+      if [ -f "$f" ]; then
+        shred -u -- "$f" 2>/dev/null || rm -f -- "$f"
+      fi
+    done
+    rm -rf -- "$auth_bootstrap_dir"
   fi
   if [ "$cleanup_disk" -eq 1 ] && [ -f "$disk_image" ]; then
     rm -f -- "$disk_image"

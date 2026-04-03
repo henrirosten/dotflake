@@ -66,10 +66,10 @@ forAllSystems (
                             securityModel = "none";
                           };
                           # Keep only bootstrap auth as a transient host share.
-                          codex-bootstrap = {
+                          auth-bootstrap = {
                             # One-way bootstrap source prepared by run-vm.sh.
-                            source = ''"''${CODEX_VM_BOOTSTRAP_DIR:-$TMPDIR/xchg}"'';
-                            target = "/mnt/codex-bootstrap";
+                            source = ''"''${AUTH_VM_BOOTSTRAP_DIR:-$TMPDIR/xchg}"'';
+                            target = "/mnt/auth-bootstrap";
                             securityModel = "none";
                           };
                         }
@@ -101,7 +101,7 @@ forAllSystems (
                   "d /mnt/host-share 0755 ${username} users -"
                 ]
                 ++ lib.optionals isGeneric [
-                  "d /mnt/codex-bootstrap 0755 root root -"
+                  "d /mnt/auth-bootstrap 0755 root root -"
                 ];
                 systemd.services.host-share-mount = {
                   description = "Mount optional host share at /mnt/host-share";
@@ -153,34 +153,56 @@ forAllSystems (
               }
               (lib.optionalAttrs isGeneric {
                 # Keep bootstrap share read-only and non-executable in guest.
-                fileSystems."/mnt/codex-bootstrap".options = lib.mkAfter [
+                fileSystems."/mnt/auth-bootstrap".options = lib.mkAfter [
                   "ro"
                   "nosuid"
                   "nodev"
                   "noexec"
                 ];
-                systemd.services.codex-bootstrap-auth = {
-                  description = "Copy Codex auth from bootstrap share";
+                systemd.services.auth-bootstrap = {
+                  description = "Copy auth credentials from bootstrap share";
                   after = [ "local-fs.target" ];
                   wants = [ "local-fs.target" ];
                   before = [ "getty.target" ];
                   wantedBy = [ "multi-user.target" ];
                   serviceConfig.Type = "oneshot";
                   script = ''
-                    if ${pkgs.util-linux}/bin/mountpoint -q /mnt/codex-bootstrap \
-                      && [ -f /mnt/codex-bootstrap/auth.json ]; then
-                      user_group="$(${pkgs.coreutils}/bin/id -gn ${username} 2>/dev/null || echo users)"
+                    if ! ${pkgs.util-linux}/bin/mountpoint -q /mnt/auth-bootstrap; then
+                      exit 0
+                    fi
+                    user_group="$(${pkgs.coreutils}/bin/id -gn ${username} 2>/dev/null || echo users)"
+
+                    # Codex auth
+                    if [ -f /mnt/auth-bootstrap/codex-auth.json ]; then
                       ${pkgs.coreutils}/bin/install -d -m 0700 ${homeDir}/.codex
                       ${pkgs.coreutils}/bin/install -m 0600 \
-                        /mnt/codex-bootstrap/auth.json \
+                        /mnt/auth-bootstrap/codex-auth.json \
                         ${homeDir}/.codex/auth.json
                       ${pkgs.coreutils}/bin/chown ${username}:"$user_group" ${homeDir}/.codex ${homeDir}/.codex/auth.json
-                      # Remove host-provided token copy as soon as it is consumed.
-                      ${pkgs.coreutils}/bin/rm -f /mnt/codex-bootstrap/auth.json || true
+                      ${pkgs.coreutils}/bin/rm -f /mnt/auth-bootstrap/codex-auth.json || true
                     fi
+
+                    # Claude Code auth
+                    if [ -f /mnt/auth-bootstrap/claude-credentials.json ]; then
+                      ${pkgs.coreutils}/bin/install -d -m 0700 ${homeDir}/.claude
+                      ${pkgs.coreutils}/bin/install -m 0600 \
+                        /mnt/auth-bootstrap/claude-credentials.json \
+                        ${homeDir}/.claude/.credentials.json
+                      if [ -f /mnt/auth-bootstrap/claude-settings.json ]; then
+                        ${pkgs.coreutils}/bin/install -m 0600 \
+                          /mnt/auth-bootstrap/claude-settings.json \
+                          ${homeDir}/.claude/settings.json
+                      fi
+                      # Mark onboarding complete so claude skips the first-run wizard.
+                      echo '{"hasCompletedOnboarding":true}' \
+                        | ${pkgs.coreutils}/bin/install -m 0600 /dev/stdin ${homeDir}/.claude.json
+                      ${pkgs.coreutils}/bin/chown -R ${username}:"$user_group" ${homeDir}/.claude ${homeDir}/.claude.json
+                      ${pkgs.coreutils}/bin/rm -f /mnt/auth-bootstrap/claude-credentials.json /mnt/auth-bootstrap/claude-settings.json || true
+                    fi
+
                     # Drop live host mount after bootstrap to reduce host interaction surface.
-                    if ${pkgs.util-linux}/bin/mountpoint -q /mnt/codex-bootstrap; then
-                      ${pkgs.util-linux}/bin/umount /mnt/codex-bootstrap || true
+                    if ${pkgs.util-linux}/bin/mountpoint -q /mnt/auth-bootstrap; then
+                      ${pkgs.util-linux}/bin/umount /mnt/auth-bootstrap || true
                     fi
                   '';
                 };
@@ -202,7 +224,7 @@ forAllSystems (
           defaultDiskSize = "${toString diskGb}G";
           defaultDiskImage = "./${name}.qcow2";
           defaultCleanupDisk = "1";
-          bootstrapCodexAuth = if isGeneric then "1" else "0";
+          bootstrapAuth = if isGeneric then "1" else "0";
           mktemp = "${pkgs.coreutils}/bin/mktemp";
           qemuImg = "${pkgs.qemu}/bin/qemu-img";
           mkfsExt4 = "${pkgs.e2fsprogs}/bin/mkfs.ext4";

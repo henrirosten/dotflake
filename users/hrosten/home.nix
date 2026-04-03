@@ -29,7 +29,7 @@ in
     packages = with pkgs; [
       bat
       cantarell-fonts
-      claude-code
+      inputs.nix-claude-code.packages.${pkgs.stdenv.hostPlatform.system}.default
       csvkit
       curl
       dig.dnsutils

@@ -28,6 +28,11 @@
       url = "github:tiiuae/sbomnix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    nix-claude-code = {
+      url = "github:ryoppippi/nix-claude-code";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
