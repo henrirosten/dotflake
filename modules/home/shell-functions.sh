@@ -112,7 +112,7 @@ own-tmp-clean() {
     echo "Error: fuser not found (install psmisc)" >&2
     return 1
   fi
-  find /tmp -mindepth 1 ! -exec fuser -s {} \; -delete 2>/dev/null
+  find /tmp -mindepth 1 ! -exec timeout 5 fuser -s {} \; -delete 2>/dev/null
 }
 
 own-nix-diff() {
