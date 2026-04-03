@@ -78,6 +78,9 @@ forAllSystems (
                   };
                 };
                 services.getty.autologinUser = lib.mkForce username;
+                # The VM runs with `-display none` so tty1 is unused. Disable its
+                # autovt to avoid a lastlog2.db lock race with the ttyS0 autologin.
+                systemd.services."autovt@tty1".enable = lib.mkForce false;
                 services.openssh.settings.X11Forwarding = lib.mkForce true;
                 programs.ssh.setXAuthLocation = lib.mkForce true;
                 # Keep VM boot logs deterministic for CI/smoke runs: auditd emits
