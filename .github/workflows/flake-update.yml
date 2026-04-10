@@ -16,6 +16,7 @@ jobs:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 360
+    environment: flake-update
     permissions:
       contents: write
       pull-requests: write
