@@ -2,8 +2,8 @@ name: flake update
 
 on:
   schedule:
-    # 04:00 UTC ~= 06:00 EET (07:00 in EEST / summer time)
-    - cron: "0 4 * * *"
+    # 02:00 UTC ~= 04:00 EET (05:00 in EEST / summer time)
+    - cron: "0 2 * * *"
   workflow_dispatch:
   pull_request:
     paths:
