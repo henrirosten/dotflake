@@ -5,6 +5,11 @@
 stty -ixon 2>/dev/null
 
 own-minhist() {
+  if [ "${1:-}" = "-h" ]; then
+    echo "Deduplicate shell history file"
+    echo "Usage: own-minhist"
+    return
+  fi
   local histfile="${HISTFILE:-$HOME/.bash_eternal_history}"
   cp "$histfile" "$histfile.old"
   nl "$histfile" | sort -k2 -k 1,1nr | uniq -f1 | sort -n | cut -f2 >"$histfile.tmp"
@@ -13,12 +18,22 @@ own-minhist() {
 }
 
 own-allfiles() {
+  if [ "${1:-}" = "-h" ]; then
+    echo "List every file on the system to ~/allfiles.txt"
+    echo "Usage: own-allfiles"
+    return
+  fi
   sudo find / -type f ! -path "/dev/*" ! -path "/sys/*" ! -path "/proc/*" ! -path "/run/*" |
     tee "$HOME/allfiles.txt" >/dev/null
   echo "Wrote $HOME/allfiles.txt"
 }
 
 own-find-largest() {
+  if [ "${1:-}" = "-h" ]; then
+    echo "Show the n largest files under path"
+    echo "Usage: own-find-largest [path] [n]"
+    return
+  fi
   if [ -z "$1" ]; then
     findpath="$PWD"
   else
@@ -33,6 +48,11 @@ own-find-largest() {
 }
 
 own-find-links() {
+  if [ "${1:-}" = "-h" ]; then
+    echo "Show all symlinks and their targets"
+    echo "Usage: own-find-links [path]"
+    return
+  fi
   if [ -z "$1" ]; then
     findpath="$PWD"
   else
@@ -42,12 +62,22 @@ own-find-links() {
 }
 
 own-nix-store-symlinks() {
+  if [ "${1:-}" = "-h" ]; then
+    echo "Find home directory symlinks pointing into /nix/store (excluding dotfiles)"
+    echo "Usage: own-nix-store-symlinks"
+    return
+  fi
   # Find all symlinks in HOME that point somewhere in /nix/store.
   # grep -v removes (home-manager managed) dotfiles from the output results.
   own-find-links "$HOME" | grep "/nix/store" | grep -v "$HOME/\."
 }
 
 own-nix-info() {
+  if [ "${1:-}" = "-h" ]; then
+    echo "Print Nix version, NIX_PATH, and channel info"
+    echo "Usage: own-nix-info"
+    return
+  fi
   local nixpkgs_version
   local nix_path_display
   local root_channels
@@ -82,11 +112,21 @@ own-nix-info() {
 }
 
 own-nix-free() {
+  if [ "${1:-}" = "-h" ]; then
+    echo "Garbage-collect up to n GB from the Nix store (default: 100)"
+    echo "Usage: own-nix-free [gb]"
+    return
+  fi
   local gb="${1:-100}"
   nix-collect-garbage -d --max-freed "$((gb * 1024 * 1024 * 1024))"
 }
 
 own-nix-clean() {
+  if [ "${1:-}" = "-h" ]; then
+    echo "Full garbage collect, warn about pinning symlinks, show old profiles and logs"
+    echo "Usage: own-nix-clean"
+    return
+  fi
   nix-collect-garbage -d
   # notify if it seems some symlinks prevent full cleanup
   if own-nix-store-symlinks >/dev/null 2>&1; then
@@ -103,11 +143,21 @@ own-nix-clean() {
 }
 
 own-journal-clean() {
+  if [ "${1:-}" = "-h" ]; then
+    echo "Rotate and vacuum systemd journal"
+    echo "Usage: own-journal-clean"
+    return
+  fi
   sudo journalctl --rotate
   sudo journalctl --vacuum-time=1s
 }
 
 own-tmp-clean() {
+  if [ "${1:-}" = "-h" ]; then
+    echo "Delete unused files in /tmp"
+    echo "Usage: own-tmp-clean"
+    return
+  fi
   if ! command -v fuser >/dev/null 2>&1; then
     echo "Error: fuser not found (install psmisc)" >&2
     return 1
@@ -116,14 +166,29 @@ own-tmp-clean() {
 }
 
 own-nix-diff() {
+  if [ "${1:-}" = "-h" ]; then
+    echo "Show diff-closures for a Nix profile (default: system)"
+    echo "Usage: own-nix-diff [profile]"
+    return
+  fi
   nix profile diff-closures --profile "${1:-/nix/var/nix/profiles/system}"
 }
 
 own-nix-why() {
+  if [ "${1:-}" = "-h" ]; then
+    echo "Show GC roots keeping a store path alive"
+    echo "Usage: own-nix-why <path>"
+    return
+  fi
   nix-store --query --roots "$1"
 }
 
 own-nix-size() {
+  if [ "${1:-}" = "-h" ]; then
+    echo "Print Nix store size and current system closure size"
+    echo "Usage: own-nix-size"
+    return
+  fi
   echo "Nix store:"
   du -sh /nix/store
   echo ""
@@ -132,6 +197,11 @@ own-nix-size() {
 }
 
 own-disk-usage() {
+  if [ "${1:-}" = "-h" ]; then
+    echo "Summarize disk usage: nix store, journal, /tmp, home"
+    echo "Usage: own-disk-usage"
+    return
+  fi
   echo "Nix store:"
   du -sh /nix/store 2>/dev/null
   echo "Journal:"
@@ -143,10 +213,20 @@ own-disk-usage() {
 }
 
 own-listening() {
+  if [ "${1:-}" = "-h" ]; then
+    echo "Show listening TCP sockets"
+    echo "Usage: own-listening"
+    return
+  fi
   ss -tlnp
 }
 
 own-stale-services() {
+  if [ "${1:-}" = "-h" ]; then
+    echo "Find processes using deleted nix store paths (need restart after rebuild)"
+    echo "Usage: own-stale-services"
+    return
+  fi
   # Find processes using deleted nix store paths (common after nixos-rebuild)
   sudo grep -rl '/nix/store.*deleted' /proc/*/maps 2>/dev/null |
     cut -d/ -f3 |
@@ -157,9 +237,19 @@ own-stale-services() {
 }
 
 own-backup() {
+  if [ "${1:-}" = "-h" ]; then
+    echo "Copy file with a date-stamped suffix"
+    echo "Usage: own-backup <file>"
+    return
+  fi
   cp -a "$1" "$1.$(date +%Y-%m-%d)"
 }
 
 own-recent() {
+  if [ "${1:-}" = "-h" ]; then
+    echo "List recently modified files (default: cwd, last 1 day)"
+    echo "Usage: own-recent [path] [days]"
+    return
+  fi
   find "${1:-.}" -type f -mtime "-${2:-1}" -printf '%T+ %p\n' | sort -r
 }
