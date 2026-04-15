@@ -106,6 +106,24 @@ The flake uses git-hooks-nix for pre-commit checks including:
 - `trim-trailing-whitespace` - Removes trailing whitespace
 - `mixed-line-endings` - Normalizes line endings
 
+## GPU hang diagnostics (x1)
+
+When investigating display freezes or i915 issues on `x1`:
+- Automatic captures live under `/var/log/gpu-hang/<UTC-timestamp>/`, produced
+  by `modules/nixos/gpu-hang-capture.nix`. Each capture contains the raw
+  `/sys/class/drm/card*/error` dump (which is wiped on reboot if not captured
+  in time) plus the kernel journal for that boot. These persist across
+  reboots. Access model matches journald: dirs `0750` and files `0640`, owned
+  `root:systemd-journal` — readable by members of the `systemd-journal` group,
+  sudo otherwise.
+- `gnome-freeze-debug [BOOT]` collects GNOME/kernel/suspend signals on demand
+  (from `modules/nixos/gnome-freeze-watchdog.nix`). BOOT defaults to `-1`.
+- `modules/nixos/gnome-freeze-watchdog.nix` also watches for GPU wedges and
+  surfaces a post-login notification after a reboot, with a pointer to the
+  captured logs.
+- Known i915 kernel params and the escalation path (e.g. `i915.enable_guc=0`)
+  are documented inline in `hosts/x1/configuration.nix`.
+
 ## Commit Conventions
 
 - Short imperative subject (e.g., "Add vscode", "Refactor home modules")

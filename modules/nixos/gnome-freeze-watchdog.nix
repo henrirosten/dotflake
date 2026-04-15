@@ -89,8 +89,11 @@ let
 
       interval_sec="''${GNOME_WATCHDOG_INTERVAL_SEC:-5}"
       failure_threshold="''${GNOME_WATCHDOG_FAILURE_THRESHOLD:-6}"
+      wedge_check_every="''${GNOME_WATCHDOG_WEDGE_CHECK_EVERY:-6}"
       failures=0
       seen_healthy=0
+      wedge_reported=0
+      loop_counter=0
 
       log() {
         echo "$1" | systemd-cat -t gnome-freeze-watchdog
@@ -103,6 +106,18 @@ let
           --object-path /org/gnome/Shell \
           --method org.freedesktop.DBus.Peer.Ping \
           --timeout 2 >/dev/null 2>&1
+      }
+
+      # A wedged i915 GPU leaves gnome-shell alive and D-Bus-responsive while
+      # the display is frozen — the shell process happily produces frames
+      # into a dead GPU (seen in the 2026-04-15 incident). The D-Bus ping
+      # never fails, so we need a second signal to react to this failure
+      # mode. The -g filter scopes to i915 kernel lines (which carry the
+      # "i915 <pci>:" prefix), avoiding false positives from other DRM
+      # drivers that reuse the same error wording.
+      check_gpu_wedge() {
+        journalctl -b -k --no-pager -g 'i915' 2>/dev/null |
+          grep -qE "device wedged|Failed to reset chip"
       }
 
       collect_debug() {
@@ -121,9 +136,32 @@ let
       log "watchdog started (interval=$interval_sec, threshold=$failure_threshold)"
 
       while true; do
+        # Periodic GPU-wedge check. If the kernel has logged a wedge during
+        # this boot, D-Bus pings cannot represent the user-visible freeze.
+        # Log once, surface a notification, and stop killing the session —
+        # session-kill does not recover a wedged GPU, only a reboot does.
+        if [ "$wedge_reported" -eq 0 ] &&
+           [ $((loop_counter % wedge_check_every)) -eq 0 ] &&
+           check_gpu_wedge; then
+          ts="$(date +%Y%m%d-%H%M%S)"
+          log_file="$(collect_debug "$ts")"
+          {
+            printf "time=%s\n" "$ts"
+            printf "type=gpu-wedge\n"
+            printf "session_id=%s\n" "''${XDG_SESSION_ID:-unknown}"
+            printf "log=%s\n" "$log_file"
+          } >"$state_dir/pending-notification"
+          log "GPU wedge detected — session-kill cannot recover a wedged GPU; reboot required. Logs: $log_file"
+          wedge_reported=1
+        fi
+        loop_counter=$((loop_counter + 1))
+
         if ping_shell; then
           seen_healthy=1
           failures=0
+        elif [ "$wedge_reported" -eq 1 ]; then
+          # GPU is already wedged; do not escalate to session-kill.
+          :
         elif [ "$seen_healthy" -eq 1 ]; then
           failures=$((failures + 1))
           log "org.gnome.Shell ping failed ($failures/$failure_threshold)"
@@ -172,13 +210,20 @@ let
       ts="$(sed -n 's/^time=//p' "$marker" | head -n1)"
       session_id="$(sed -n 's/^session_id=//p' "$marker" | head -n1)"
       log_file="$(sed -n 's/^log=//p' "$marker" | head -n1)"
+      type="$(sed -n 's/^type=//p' "$marker" | head -n1)"
+
+      title="GNOME session recovered after freeze"
+      body="Recovered at $ts (session $session_id). Run gnome-freeze-debug -1. Log: $log_file"
+      if [ "$type" = "gpu-wedge" ]; then
+        title="GPU was wedged — reboot was required to recover"
+        body="Detected at $ts (session $session_id). Captured diagnostics in /var/log/gpu-hang/. Watchdog log: $log_file"
+      fi
 
       # Let the notification daemon fully initialize after login.
       sleep 8
 
       if notify-send --app-name "GNOME Freeze Watchdog" --urgency=critical \
-        "GNOME session recovered after freeze" \
-        "Recovered at $ts (session $session_id). Run gnome-freeze-debug -1. Log: $log_file"; then
+        "$title" "$body"; then
         rm -f "$marker"
       else
         echo "failed to send recovery notification" | systemd-cat -t gnome-freeze-watchdog

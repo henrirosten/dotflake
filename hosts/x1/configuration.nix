@@ -28,8 +28,32 @@ in
 
   networking.hostName = "x1";
 
-  # Intel iGPU freeze workaround on this hardware generation:
-  # keep cursor/mouse responsive while GNOME input/UI stops.
+  # i915 tuning for this iGPU (Alder/Raptor Lake-P, PCI 8086:a7a1).
+  #
+  # enable_psr=0 and enable_dc=0 are long-standing display-power workarounds
+  # on this hardware generation; kept to avoid reintroducing known-broken
+  # code paths. i915.force_probe=a7a1 is contributed by nixos-hardware's
+  # lenovo-thinkpad-x1-11th-gen module.
+  #
+  # If GPU hangs recur (symptoms: `GPU HANG`, `device wedged`, or
+  # `Failed to reset chip` in dmesg; display frozen until power-cycle),
+  # captured diagnostics land in /var/log/gpu-hang/<UTC-timestamp>/ —
+  # see modules/nixos/gpu-hang-capture.nix.
+  #
+  # Escalation options to try one at a time after confirming kernel and
+  # linux-firmware are current (each requires a rebuild + reboot):
+  #   - i915.enable_guc=0   Disable GuC submission, fall back to legacy
+  #                         execbuf. Directly targets the failure mode
+  #                         where GuC-based reset times out
+  #                         (`Failed to reset GuC, ret = -110`). Downside:
+  #                         loses HuC-based video decode/encode acceleration.
+  #                         Do NOT combine with modules that require HuC.
+  #   - i915.reset=1        Restrict i915 to per-engine resets only (no
+  #                         full-chip reset). Worth trying if chip-wide
+  #                         reset is the problematic path.
+  # Last incident: 2026-04-15, one-off, Chrome GPU process (rcs0) was the
+  # trigger. Prior 6-day boot had zero hangs, so none of the above are
+  # applied by default.
   boot.kernelParams = [
     "i915.enable_psr=0"
     "i915.enable_dc=0"

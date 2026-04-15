@@ -1,6 +1,7 @@
 {
   imports = [
     ./gnome-freeze-watchdog.nix
+    ./gpu-hang-capture.nix
   ];
 
   # Work around Mutter KMS frame assertion failures (mutter#3265, MR !3912).
