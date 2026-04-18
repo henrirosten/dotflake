@@ -236,6 +236,23 @@ own-stale-services() {
     done
 }
 
+own-reboot-needed() {
+  if [ "${1:-}" = "-h" ]; then
+    echo "Check if a reboot is required (kernel/initrd/modules differ between booted and current system)"
+    echo "Usage: own-reboot-needed"
+    return
+  fi
+  local booted current
+  booted="$(readlink /run/booted-system/{initrd,kernel,kernel-modules})"
+  current="$(readlink /run/current-system/{initrd,kernel,kernel-modules})"
+  if [ "$booted" = "$current" ]; then
+    echo "no reboot needed"
+    return 0
+  fi
+  echo "reboot required"
+  return 1
+}
+
 own-backup() {
   if [ "${1:-}" = "-h" ]; then
     echo "Copy file with a date-stamped suffix"
