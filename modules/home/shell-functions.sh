@@ -154,15 +154,24 @@ own-journal-clean() {
 
 own-tmp-clean() {
   if [ "${1:-}" = "-h" ]; then
-    echo "Delete unused files in /tmp"
+    echo "Delete top-level entries in /tmp that no readable process has open"
     echo "Usage: own-tmp-clean"
     return
   fi
-  if ! command -v fuser >/dev/null 2>&1; then
-    echo "Error: fuser not found (install psmisc)" >&2
-    return 1
-  fi
-  find /tmp -mindepth 1 ! -exec timeout 5 fuser -s {} \; -delete 2>/dev/null
+  # One /proc pass collects every top-level /tmp path referenced by a readable
+  # process (open fds, cwd, exe, root, and memory-mapped files). The previous
+  # per-file 'fuser' walk forked once per entry and hung on large /tmp trees.
+  local in_use
+  in_use="$(
+    {
+      find /proc -maxdepth 4 -type l -lname '/tmp/*' -printf '%l\n' 2>/dev/null
+      awk '$NF ~ "^/tmp/"{print $NF}' /proc/[0-9]*/maps 2>/dev/null
+    } | grep -v ' (deleted)$' | sed -n 's|^\(/tmp/[^/]\{1,\}\).*|\1|p' | sort -u
+  )"
+  local entry
+  while IFS= read -r -d '' entry; do
+    grep -qxF -- "$entry" <<<"$in_use" || rm -rf -- "$entry" 2>/dev/null
+  done < <(find /tmp -mindepth 1 -maxdepth 1 -print0)
 }
 
 own-nix-diff() {
