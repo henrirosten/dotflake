@@ -7,6 +7,7 @@ SSH_USER="${USER:-$(id -un)}"
 
 declare -A HOST_MACS=(
   [nocturn]="f0:2f:74:15:d9:a9"
+  [t14s]="8c:f8:c5:33:09:64"
 )
 
 log() {
