@@ -24,6 +24,14 @@ in
 
   networking.hostName = "t14s";
 
+  services.logind.settings.Login = {
+    HandlePowerKey = "suspend";
+    HandleLidSwitch = "ignore";
+    HandleLidSwitchExternalPower = "ignore";
+    HandleLidSwitchDocked = "ignore";
+    IdleAction = "ignore";
+  };
+
   # Keep the host layout aligned with x1, but avoid carrying over its
   # Carbon-specific i915 workarounds to this different ThinkPad model.
   services.avahi.enable = false;
@@ -44,6 +52,15 @@ in
       imports = [
         ../../users/hrosten/home.nix
         outputs.homeModules.gui-extras
+        {
+          dconf.settings."org/gnome/settings-daemon/plugins/power" = {
+            power-button-action = "suspend";
+            sleep-inactive-ac-timeout = 0;
+            sleep-inactive-ac-type = "nothing";
+            sleep-inactive-battery-timeout = 0;
+            sleep-inactive-battery-type = "nothing";
+          };
+        }
       ];
     };
 }
