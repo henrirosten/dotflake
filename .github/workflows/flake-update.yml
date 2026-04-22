@@ -31,13 +31,14 @@ jobs:
       - name: Install nix
         uses: cachix/install-nix-action@616559265b40713947b9c190a8ff4b507b5df49b # v31.10.4
         with:
+          install_options: --no-daemon
           extra_nix_config: |
             extra-trusted-substituters = http://127.0.0.1
             experimental-features = nix-command flakes
             system-features = nixos-test benchmark big-parallel kvm
 
       - name: Enable Magic Nix Cache
-        uses: DeterminateSystems/magic-nix-cache-action@565684385bcd71bad329742eefe8d12f2e765b39 # v13
+        uses: DeterminateSystems/magic-nix-cache-action@b4a9864e3a8ab8179be30f2e70fd71fe9996bb9d # main@2026-04-15 (node24)
         with:
           use-flakehub: false
 
@@ -157,13 +158,14 @@ jobs:
       - name: Install nix
         uses: cachix/install-nix-action@616559265b40713947b9c190a8ff4b507b5df49b # v31.10.4
         with:
+          install_options: --no-daemon
           extra_nix_config: |
             extra-trusted-substituters = http://127.0.0.1
             experimental-features = nix-command flakes
             system-features = nixos-test benchmark big-parallel kvm
 
       - name: Enable Magic Nix Cache
-        uses: DeterminateSystems/magic-nix-cache-action@565684385bcd71bad329742eefe8d12f2e765b39 # v13
+        uses: DeterminateSystems/magic-nix-cache-action@b4a9864e3a8ab8179be30f2e70fd71fe9996bb9d # main@2026-04-15 (node24)
         with:
           use-flakehub: false
 
