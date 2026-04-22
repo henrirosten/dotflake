@@ -28,7 +28,9 @@ forAllSystems (
       name = "x1-vm-smoke";
       node.specialArgs = testSpecialArgs;
       node.pkgsReadOnly = false;
-      nodes.machine =
+      # Avoid colliding with runNixOSTest's implicit single-node `machine`
+      # alias when nixpkgs type-checks the generated Python test script.
+      nodes.x1 =
         { lib, ... }:
         {
           imports = [ ../hosts/x1/configuration.nix ];
@@ -42,13 +44,13 @@ forAllSystems (
         };
       testScript = ''
         start_all()
-        machine.wait_for_unit("default.target")
-        machine.wait_until_succeeds("systemctl is-system-running --wait | grep -qx running")
-        machine.succeed("test -z \"$(systemctl --failed --plain --no-legend)\"")
-        machine.succeed("command -v codex")
-        machine.succeed("codex --help >/dev/null 2>&1 || codex-cli --help >/dev/null 2>&1")
-        machine.succeed("command -v claude")
-        machine.succeed("claude --version")
+        x1.wait_for_unit("default.target")
+        x1.wait_until_succeeds("systemctl is-system-running --wait | grep -qx running")
+        x1.succeed("test -z \"$(systemctl --failed --plain --no-legend)\"")
+        x1.succeed("command -v codex")
+        x1.succeed("codex --help >/dev/null 2>&1 || codex-cli --help >/dev/null 2>&1")
+        x1.succeed("command -v claude")
+        x1.succeed("claude --version")
       '';
     };
   }
