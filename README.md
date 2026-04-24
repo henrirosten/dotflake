@@ -156,6 +156,21 @@ nix-shell
 home-manager switch --flake .#hrosten
 ```
 
+## VPN
+
+The `vpn` launcher expects:
+- a local SOPS file at `~/.config/dotflake/secrets/vpn.yaml`
+- an age key at `~/.config/sops/age/keys.txt`
+- the Home Manager profile to be applied with `home-manager switch --flake .#hrosten`
+
+Usage:
+```bash
+vpn list
+vpn <profile>
+```
+
+To modify the local VPN secrets, edit `~/.config/dotflake/secrets/vpn.yaml` with `sops`, then reapply `home-manager switch --flake .#hrosten`.
+
 ## CI Workflows
 
 - `.github/workflows/check.yml`: formatting, lint, flake eval checks, and host build matrix

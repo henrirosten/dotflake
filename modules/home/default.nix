@@ -6,6 +6,7 @@
   shell-common = import ./shell-common.nix;
   ssh-conf = import ./ssh-conf.nix;
   starship = import ./starship.nix;
+  vpn = import ./vpn.nix;
   vim = import ./vim.nix;
   vscode = import ./vscode.nix;
   zsh = import ./zsh.nix;

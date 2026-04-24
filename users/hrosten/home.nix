@@ -15,6 +15,7 @@ in
     (outputs.homeModules.git { inherit user; })
     outputs.homeModules.ssh-conf
     outputs.homeModules.starship
+    outputs.homeModules.vpn
     outputs.homeModules.vim
     outputs.homeModules.zsh
     inputs.nix-index-database.homeModules.nix-index
@@ -39,9 +40,6 @@ in
       jq
       net-tools
       nix-info
-      openconnect
-      openfortivpn
-      openvpn
       ripgrep
       inputs.sbomnix.packages.${pkgs.stdenv.hostPlatform.system}.default
       tree
