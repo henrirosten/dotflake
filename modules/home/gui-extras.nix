@@ -17,7 +17,6 @@
       keepass
       libreoffice-fresh
       meld
-      sourcegit
       wireshark
     ];
   };
