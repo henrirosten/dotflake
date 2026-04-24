@@ -1,5 +1,7 @@
 # Contributing
 
+Repository overview, host inventory, VM usage, and bootstrap steps live in `README.md`.
+
 ## Scope
 
 This repository is check-driven. There is no standalone unit-test suite, so changes should be validated with formatting, linting, and relevant builds.
@@ -33,10 +35,10 @@ nix flake check --option allow-import-from-derivation false
 
 Validate target hosts when relevant:
 ```bash
-nixos-rebuild build --flake .#x1
-nixos-rebuild build --flake .#t480
+nixos-rebuild build --flake .#<host>
 home-manager switch --flake .#hrosten
 ```
+Use the affected host, for example `x1`, `t480`, `t14s`, `nocturn`, or `generic`.
 
 ## Style
 

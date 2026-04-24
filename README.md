@@ -10,6 +10,7 @@ Nix flake repository for:
 |------|---------|
 | `x1` | ThinkPad X1 Carbon |
 | `t480` | ThinkPad T480 |
+| `t14s` | ThinkPad T14s |
 | `nocturn` | Headless server (Ryzen 9 5950X, 64 GB RAM) |
 | `generic` | VM-focused profile used for local and CI testing |
 
@@ -56,16 +57,15 @@ nix flake check --option allow-import-from-derivation false
 
 Build:
 ```bash
-nixos-rebuild build --flake .#x1
-nixos-rebuild build --flake .#t480
-nixos-rebuild build --flake .#nocturn
+nixos-rebuild build --flake .#<host>
 ```
+Available hosts: `x1`, `t480`, `t14s`, `nocturn`, `generic`
 
 Apply (local):
 ```bash
-sudo nixos-rebuild switch --flake .#x1
-sudo nixos-rebuild switch --flake .#t480
+sudo nixos-rebuild switch --flake .#<host>
 ```
+Typical local hosts: `x1`, `t480`, `t14s`
 
 ## Remote Deployment
 
@@ -82,8 +82,12 @@ sudo nixos-rebuild switch --flake .#t480
 
 Run a host in QEMU:
 ```bash
+nix run .#<host>-vm
+```
+Examples:
+```bash
 nix run .#x1-vm
-nix run .#t480-vm
+nix run .#t14s-vm
 nix run .#generic-vm
 ```
 
