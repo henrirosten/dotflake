@@ -130,6 +130,10 @@ forAllSystems (
                     done
                   '';
                 };
+                systemd.services."home-manager-${username}" = {
+                  after = [ "host-share-mount.service" ];
+                  wants = [ "host-share-mount.service" ];
+                };
                 environment.loginShellInit = lib.mkAfter ''
                   if [ "$USER" = "${username}" ] && [ -z "''${SSH_CONNECTION:-}" ]; then
                     tty_path="$(tty 2>/dev/null || true)"
@@ -142,17 +146,78 @@ forAllSystems (
                     esac
                   fi
                 '';
-                home-manager.users.${username} = {
-                  programs.starship.settings = {
-                    format = lib.mkForce "\${custom.vm_indicator}$all";
-                    custom.vm_indicator = {
-                      when = true;
-                      command = "echo vm";
-                      format = "[[$output](bold yellow)]($style) ";
-                      style = "bold yellow";
+                home-manager.users.${username} =
+                  { lib, ... }:
+                  {
+                    home.activation.linkSharedVpnSecrets = lib.hm.dag.entryBetween [ "sops-nix" ] [ "writeBoundary" ] ''
+                      share_root=/mnt/host-share
+
+                      cleanup_shared_link() {
+                        target="$1"
+                        [ -L "$target" ] || return 0
+
+                        link_target="$(${pkgs.coreutils}/bin/readlink "$target" || true)"
+                        case "$link_target" in
+                          "$share_root" | "$share_root"/*)
+                            ${pkgs.coreutils}/bin/rm -f "$target"
+                            ;;
+                        esac
+                      }
+
+                      if ! ${pkgs.util-linux}/bin/mountpoint -q "$share_root"; then
+                        cleanup_shared_link "${homeDir}/.config/dotflake/secrets/vpn.yaml"
+                        cleanup_shared_link "${homeDir}/.config/sops/age/keys.txt"
+                        exit 0
+                      fi
+
+                      link_if_shared() {
+                        target="$1"
+                        shift
+                        source_path=""
+                        for candidate in "$@"; do
+                          if [ -f "$candidate" ]; then
+                            source_path="$candidate"
+                            break
+                          fi
+                        done
+
+                        if [ -z "$source_path" ]; then
+                          cleanup_shared_link "$target"
+                          return 0
+                        fi
+
+                        target_dir="$(${pkgs.coreutils}/bin/dirname "$target")"
+                        ${pkgs.coreutils}/bin/mkdir -p "$target_dir"
+
+                        if [ -e "$target" ] && [ ! -L "$target" ]; then
+                          return 0
+                        fi
+
+                        ${pkgs.coreutils}/bin/ln -snf "$source_path" "$target"
+                      }
+
+                      link_if_shared \
+                        "${homeDir}/.config/dotflake/secrets/vpn.yaml" \
+                        "$share_root/vpn.yaml" \
+                        "$share_root/dotflake/secrets/vpn.yaml" \
+                        "$share_root/.config/dotflake/secrets/vpn.yaml"
+
+                      link_if_shared \
+                        "${homeDir}/.config/sops/age/keys.txt" \
+                        "$share_root/keys.txt" \
+                        "$share_root/sops/age/keys.txt" \
+                        "$share_root/.config/sops/age/keys.txt"
+                    '';
+                    programs.starship.settings = {
+                      format = lib.mkForce "\${custom.vm_indicator}$all";
+                      custom.vm_indicator = {
+                        when = true;
+                        command = "echo vm";
+                        format = "[[$output](bold yellow)]($style) ";
+                        style = "bold yellow";
+                      };
                     };
                   };
-                };
               }
               (lib.optionalAttrs isGeneric {
                 # Keep bootstrap share read-only and non-executable in guest.

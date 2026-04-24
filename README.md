@@ -175,6 +175,13 @@ vpn <profile>
 
 To modify the local VPN secrets, edit `~/.config/dotflake/secrets/vpn.yaml` with `sops`, then reapply `home-manager switch --flake .#hrosten`.
 
+To use `vpn` inside a VM:
+```bash
+nix run .#generic-vm -- --share-dir ~/.config
+```
+
+That shares `~/.config/dotflake/secrets/vpn.yaml` and `~/.config/sops/age/keys.txt` with the guest. After boot, run `vpn list` or `vpn <profile>` inside the VM.
+
 ## CI Workflows
 
 - `.github/workflows/check.yml`: formatting, lint, flake eval checks, and host build matrix

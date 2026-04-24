@@ -6,10 +6,12 @@
   ...
 }:
 let
+  coreutils = pkgs.coreutils;
   jq = lib.getExe pkgs.jq;
   openconnect = lib.getExe pkgs.openconnect;
   openfortivpn = lib.getExe pkgs.openfortivpn;
   openvpn = lib.getExe pkgs.openvpn;
+  systemctl = lib.getExe' pkgs.systemd "systemctl";
   localSopsFile = config.lib.file.mkOutOfStoreSymlink "${config.xdg.configHome}/dotflake/secrets/vpn.yaml";
 in
 {
@@ -35,10 +37,41 @@ in
       text = ''
         set -euo pipefail
 
-        profiles_path='${config.sops.secrets.vpn-profiles.path}'
+        profiles_path_template='${config.sops.secrets.vpn-profiles.path}'
+        source_sops_file='${config.xdg.configHome}/dotflake/secrets/vpn.yaml'
+        age_key_file='${config.home.homeDirectory}/.config/sops/age/keys.txt'
+        runtime_dir="''${XDG_RUNTIME_DIR:-}"
+
+        if [ -z "$runtime_dir" ]; then
+          echo "XDG_RUNTIME_DIR is not set." >&2
+          exit 1
+        fi
+
+        profiles_path="''${profiles_path_template//%r/$runtime_dir}"
 
         usage() {
           echo "Usage: vpn list | vpn <profile>" >&2
+        }
+
+        ensure_profiles() {
+          if [ -f "$profiles_path" ]; then
+            return 0
+          fi
+
+          if [ ! -f "$source_sops_file" ] || [ ! -f "$age_key_file" ]; then
+            return 1
+          fi
+
+          if ${systemctl} --user start sops-nix.service >/dev/null 2>&1; then
+            for _ in $("${coreutils}/bin/seq" 1 20); do
+              if [ -f "$profiles_path" ]; then
+                return 0
+              fi
+              ${coreutils}/bin/sleep 0.1
+            done
+          fi
+
+          [ -f "$profiles_path" ]
         }
 
         resolve_client() {
@@ -53,9 +86,10 @@ in
           esac
         }
 
-        if [ ! -f "$profiles_path" ]; then
+        if ! ensure_profiles; then
           echo "Missing VPN profiles at $profiles_path." >&2
-          echo "Run home-manager switch and make sure ~/.config/sops/age/keys.txt is present." >&2
+          echo "Make sure $source_sops_file and $age_key_file are present." >&2
+          echo "In a VM, share either vpn.yaml + keys.txt or the host-style dotflake/secrets + sops/age layout." >&2
           exit 1
         fi
 
