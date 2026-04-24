@@ -107,27 +107,54 @@ forAllSystems (
                   "d /mnt/auth-bootstrap 0755 root root -"
                 ];
                 systemd.services.host-share-mount = {
-                  description = "Mount optional host share at /mnt/host-share";
+                  description = "Mount optional host shares at /mnt/host-share";
                   after = [ "local-fs.target" ];
                   wants = [ "local-fs.target" ];
                   before = [ "getty.target" ];
                   wantedBy = [ "multi-user.target" ];
                   serviceConfig.Type = "oneshot";
                   script = ''
-                    if ${pkgs.util-linux}/bin/mountpoint -q /mnt/host-share; then
-                      exit 0
-                    fi
+                    share_root=/mnt/host-share
+                    share_state_dir=/run/vm-host-shares
+                    share_list="$share_state_dir/paths"
+                    user_group="$(${pkgs.coreutils}/bin/id -gn ${username} 2>/dev/null || echo users)"
+                    mounted_any=0
+
+                    ${pkgs.coreutils}/bin/mkdir -p "$share_root" "$share_state_dir"
+                    ${pkgs.coreutils}/bin/rm -f "$share_list"
 
                     for tag in /sys/bus/virtio/drivers/9pnet_virtio/virtio*/mount_tag; do
-                      if [ -r "$tag" ] && [ "$(${pkgs.coreutils}/bin/cat "$tag")" = "host-share" ]; then
+                      [ -r "$tag" ] || continue
+
+                      tag_name="$(${pkgs.coreutils}/bin/cat "$tag")"
+                      case "$tag_name" in
+                        host-share)
+                          mount_path="$share_root"
+                          ;;
+                        host-share-*)
+                          share_name="''${tag_name#host-share-}"
+                          mount_path="$share_root/$share_name"
+                          ${pkgs.coreutils}/bin/mkdir -p "$mount_path"
+                          ;;
+                        *)
+                          continue
+                          ;;
+                      esac
+
+                      if ! ${pkgs.util-linux}/bin/mountpoint -q "$mount_path"; then
                         ${pkgs.util-linux}/bin/mount -t 9p \
                           -o trans=virtio,version=9p2000.L,rw,msize=104857600,nosuid,nodev \
-                          host-share /mnt/host-share
-                        user_group="$(${pkgs.coreutils}/bin/id -gn ${username} 2>/dev/null || echo users)"
-                        ${pkgs.coreutils}/bin/chown ${username}:"$user_group" /mnt/host-share || true
-                        exit 0
+                          "$tag_name" "$mount_path"
                       fi
+
+                      ${pkgs.coreutils}/bin/chown ${username}:"$user_group" "$mount_path" || true
+                      printf '%s\n' "$mount_path" >> "$share_list"
+                      mounted_any=1
                     done
+
+                    if [ "$mounted_any" -eq 0 ]; then
+                      ${pkgs.coreutils}/bin/rm -f "$share_list"
+                    fi
                   '';
                 };
                 systemd.services."home-manager-${username}" = {
@@ -137,10 +164,15 @@ forAllSystems (
                 environment.loginShellInit = lib.mkAfter ''
                   if [ "$USER" = "${username}" ] && [ -z "''${SSH_CONNECTION:-}" ]; then
                     tty_path="$(tty 2>/dev/null || true)"
+                    share_list=/run/vm-host-shares/paths
                     case "$tty_path" in
                       /dev/tty1|/dev/ttyS0)
-                        if ${pkgs.util-linux}/bin/mountpoint -q /mnt/host-share; then
-                          cd /mnt/host-share || true
+                        if [ -s "$share_list" ]; then
+                          echo "Host-shared directories:"
+                          while IFS= read -r share_path; do
+                            [ -n "$share_path" ] || continue
+                            echo "  $share_path"
+                          done < "$share_list"
                         fi
                         ;;
                     esac
@@ -151,6 +183,8 @@ forAllSystems (
                   {
                     home.activation.linkSharedVpnSecrets = lib.hm.dag.entryBetween [ "sops-nix" ] [ "writeBoundary" ] ''
                       share_root=/mnt/host-share
+                      share_list=/run/vm-host-shares/paths
+                      share_paths=()
 
                       cleanup_shared_link() {
                         target="$1"
@@ -164,7 +198,13 @@ forAllSystems (
                         esac
                       }
 
-                      if ! ${pkgs.util-linux}/bin/mountpoint -q "$share_root"; then
+                      if [ -r "$share_list" ]; then
+                        mapfile -t share_paths < "$share_list"
+                      elif ${pkgs.util-linux}/bin/mountpoint -q "$share_root"; then
+                        share_paths=("$share_root")
+                      fi
+
+                      if [ "''${#share_paths[@]}" -eq 0 ]; then
                         cleanup_shared_link "${homeDir}/.config/dotflake/secrets/vpn.yaml"
                         cleanup_shared_link "${homeDir}/.config/sops/age/keys.txt"
                         exit 0
@@ -174,11 +214,14 @@ forAllSystems (
                         target="$1"
                         shift
                         source_path=""
-                        for candidate in "$@"; do
-                          if [ -f "$candidate" ]; then
-                            source_path="$candidate"
-                            break
-                          fi
+                        for share_path in "''${share_paths[@]}"; do
+                          for relative_path in "$@"; do
+                            candidate="$share_path/$relative_path"
+                            if [ -f "$candidate" ]; then
+                              source_path="$candidate"
+                              break 2
+                            fi
+                          done
                         done
 
                         if [ -z "$source_path" ]; then
@@ -198,15 +241,15 @@ forAllSystems (
 
                       link_if_shared \
                         "${homeDir}/.config/dotflake/secrets/vpn.yaml" \
-                        "$share_root/vpn.yaml" \
-                        "$share_root/dotflake/secrets/vpn.yaml" \
-                        "$share_root/.config/dotflake/secrets/vpn.yaml"
+                        "vpn.yaml" \
+                        "dotflake/secrets/vpn.yaml" \
+                        ".config/dotflake/secrets/vpn.yaml"
 
                       link_if_shared \
                         "${homeDir}/.config/sops/age/keys.txt" \
-                        "$share_root/keys.txt" \
-                        "$share_root/sops/age/keys.txt" \
-                        "$share_root/.config/sops/age/keys.txt"
+                        "keys.txt" \
+                        "sops/age/keys.txt" \
+                        ".config/sops/age/keys.txt"
                     '';
                     programs.starship.settings = {
                       format = lib.mkForce "\${custom.vm_indicator}$all";

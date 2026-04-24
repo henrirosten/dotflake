@@ -9,13 +9,94 @@ disk_image="${NIX_DISK_IMAGE:-@defaultDiskImage@}"
 host_codex_auth_file="${CODEX_HOST_AUTH_FILE:-$HOME/.codex/auth.json}"
 host_claude_auth_file="${CLAUDE_HOST_AUTH_FILE:-$HOME/.claude/.credentials.json}"
 host_share_dir="${VM_HOST_SHARE_DIR:-}"
+host_share_dirs_env="${VM_HOST_SHARE_DIRS:-}"
+declare -a host_share_dirs=()
+declare -a host_share_names=()
 managed_auth_bootstrap_dir=0
 auth_bootstrap_dir=""
 override_ram=0
 override_cpus=0
 override_disk_size=0
+use_cli_share_dirs=0
 
 umask 077
+
+if [ -n "$host_share_dirs_env" ]; then
+  IFS=: read -r -a host_share_dirs <<<"$host_share_dirs_env"
+elif [ -n "$host_share_dir" ]; then
+  host_share_dirs=("$host_share_dir")
+fi
+
+share_name_in_use() {
+  local name="$1"
+  local existing
+
+  for existing in "${host_share_names[@]}"; do
+    if [ "$existing" = "$name" ]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+derive_share_name() {
+  local dir="$1"
+  local name="${dir##*/}"
+  local base
+  local suffix
+
+  while [ -n "$name" ] && [ "${name#.}" != "$name" ]; do
+    name="${name#.}"
+  done
+
+  name="${name//[^[:alnum:]._-]/-}"
+  while [[ $name == *--* ]]; do
+    name="${name//--/-}"
+  done
+  name="${name#-}"
+  name="${name%-}"
+
+  if [ -z "$name" ]; then
+    name="share"
+  fi
+
+  base="$name"
+  suffix=2
+  while share_name_in_use "$name"; do
+    name="${base}-${suffix}"
+    suffix=$((suffix + 1))
+  done
+
+  printf '%s\n' "$name"
+}
+
+validate_share_dir() {
+  local dir="$1"
+
+  if [ ! -d "$dir" ]; then
+    echo "--share-dir must point to an existing directory: $dir" >&2
+    exit 2
+  fi
+
+  dir="$(cd "$dir" && pwd -P)"
+  case "$dir" in
+  *":"*)
+    echo "--share-dir must not contain colons (reserved by VM_HOST_SHARE_DIRS): $dir" >&2
+    exit 2
+    ;;
+  *","*)
+    echo "--share-dir must not contain commas (QEMU option separator): $dir" >&2
+    exit 2
+    ;;
+  *[[:space:]]*)
+    echo "--share-dir must not contain whitespace: $dir" >&2
+    exit 2
+    ;;
+  esac
+
+  printf '%s\n' "$dir"
+}
 
 if [ "$bootstrap_auth" -eq 1 ]; then
   auth_bootstrap_dir="$(@mktemp@ -d -t @vmName@-auth-bootstrap.XXXXXX)"
@@ -46,7 +127,11 @@ while [ "$#" -gt 0 ]; do
     shift 2
     ;;
   --share-dir)
-    host_share_dir="$2"
+    if [ "$use_cli_share_dirs" -eq 0 ]; then
+      host_share_dirs=()
+      use_cli_share_dirs=1
+    fi
+    host_share_dirs+=("$2")
     shift 2
     ;;
   --ram-mb)
@@ -74,13 +159,16 @@ Options:
   --cpus N           Number of CPUs (default: @defaultCpus@)
   --disk-size SIZE   Disk size (e.g. 8G, 16384M; default: @defaultDiskSize@)
   --disk-image PATH  Disk image path (default: @defaultDiskImage@)
-  --share-dir PATH   Share host directory at /mnt/host-share in guest
+  --share-dir PATH   Share host directory with the guest (repeatable)
 
 Environment:
   NIX_DISK_IMAGE     Override disk image path (default: @defaultDiskImage@)
-  VM_HOST_SHARE_DIR  Host directory shared to guest at /mnt/host-share
+  VM_HOST_SHARE_DIR  Host directory shared to guest (single-share compatibility)
+  VM_HOST_SHARE_DIRS Host directories shared to guest, colon-separated
   CODEX_HOST_AUTH_FILE   Host Codex auth file for one-way VM bootstrap (default: $HOME/.codex/auth.json)
   CLAUDE_HOST_AUTH_FILE  Host Claude auth file for one-way VM bootstrap (default: $HOME/.claude/.credentials)
+
+Shared paths must not contain ':', commas, or whitespace.
 EOF
     exit 0
     ;;
@@ -102,24 +190,35 @@ if command -v ssh-keygen >/dev/null 2>&1; then
 fi
 
 export NIX_DISK_IMAGE="$disk_image"
-if [ -n "$host_share_dir" ]; then
-  if [ ! -d "$host_share_dir" ]; then
-    echo "--share-dir must point to an existing directory: $host_share_dir" >&2
-    exit 2
+if [ "${#host_share_dirs[@]}" -gt 0 ]; then
+  declare -a validated_share_dirs=()
+  for host_share_dir in "${host_share_dirs[@]}"; do
+    [ -n "$host_share_dir" ] || continue
+    host_share_dir="$(validate_share_dir "$host_share_dir")"
+    validated_share_dirs+=("$host_share_dir")
+  done
+  host_share_dirs=("${validated_share_dirs[@]}")
+fi
+
+if [ "${#host_share_dirs[@]}" -gt 0 ]; then
+  share_dirs_env=""
+  for host_share_dir in "${host_share_dirs[@]}"; do
+    share_dirs_env="${share_dirs_env:+$share_dirs_env:}$host_share_dir"
+  done
+  export VM_HOST_SHARE_DIRS="$share_dirs_env"
+
+  if [ "${#host_share_dirs[@]}" -eq 1 ]; then
+    export VM_HOST_SHARE_DIR="${host_share_dirs[0]}"
+    export QEMU_OPTS="${QEMU_OPTS:+$QEMU_OPTS }-virtfs local,path=${host_share_dirs[0]},mount_tag=host-share,security_model=none,multidevs=remap"
+  else
+    unset VM_HOST_SHARE_DIR || true
+    for host_share_dir in "${host_share_dirs[@]}"; do
+      host_share_names+=("$(derive_share_name "$host_share_dir")")
+    done
+    for i in "${!host_share_dirs[@]}"; do
+      export QEMU_OPTS="${QEMU_OPTS:+$QEMU_OPTS }-virtfs local,path=${host_share_dirs[i]},mount_tag=host-share-${host_share_names[i]},security_model=none,multidevs=remap"
+    done
   fi
-  host_share_dir="$(cd "$host_share_dir" && pwd -P)"
-  case "$host_share_dir" in
-  *","*)
-    echo "--share-dir must not contain commas (QEMU option separator): $host_share_dir" >&2
-    exit 2
-    ;;
-  *[[:space:]]*)
-    echo "--share-dir must not contain whitespace: $host_share_dir" >&2
-    exit 2
-    ;;
-  esac
-  export VM_HOST_SHARE_DIR="$host_share_dir"
-  export QEMU_OPTS="${QEMU_OPTS:+$QEMU_OPTS }-virtfs local,path=$host_share_dir,mount_tag=host-share,security_model=none,multidevs=remap"
 fi
 if [ "$override_ram" -eq 1 ]; then
   export QEMU_OPTS="${QEMU_OPTS:+$QEMU_OPTS }-m $ram_mb"

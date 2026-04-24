@@ -103,15 +103,18 @@ Example custom resources:
 nix run .#x1-vm -- --ram-mb 2048 --cpus 2 --disk-size 16G --disk-image ./x1.qcow2 --keep-disk
 ```
 
-Share a host directory with any VM app (mounted writable at `/mnt/host-share` in the guest):
+Share one or more host directories with any VM app:
 ```bash
 nix run .#generic-vm -- --share-dir /path/to/host/dir
+nix run .#generic-vm -- --share-dir ~/.config --share-dir ~/src/dotflake
 ```
-When `--share-dir` is provided, the VM autologin shell starts in `/mnt/host-share`.
+With one shared directory, it is mounted at `/mnt/host-share`. With multiple shared directories, they are mounted under `/mnt/host-share/<name>`. The autologin shell still starts in the user's home directory and prints the mounted share paths.
+Shared paths must not contain `:`, commas, or whitespace.
 
 Environment overrides:
 - `NIX_DISK_IMAGE` (default: `./<vm-name>.qcow2`)
 - `VM_HOST_SHARE_DIR` (same effect as `--share-dir`)
+- `VM_HOST_SHARE_DIRS` (same effect as repeating `--share-dir`, colon-separated; shared paths must not contain `:`)
 - `CODEX_HOST_AUTH_FILE` (default: `$HOME/.codex/auth.json`)
 - `CLAUDE_HOST_AUTH_FILE` (default: `$HOME/.claude/.credentials.json`)
 
