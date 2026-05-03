@@ -81,6 +81,7 @@ jobs:
       id-token: write
     strategy:
       fail-fast: false
+      max-parallel: 3
       matrix:
         target: ${{ fromJson(needs.discover_nixos_configurations.outputs.targets) }}
     steps:
@@ -109,4 +110,21 @@ jobs:
               exit 1
               ;;
           esac
-          nix build ".#nixosConfigurations.${TARGET}.config.system.build.toplevel" -L
+
+          build_attr=".#nixosConfigurations.${TARGET}.config.system.build.toplevel"
+          max_attempts=3
+
+          for attempt in $(seq 1 "$max_attempts"); do
+            if nix build "$build_attr" -L; then
+              exit 0
+            fi
+
+            if [ "$attempt" -eq "$max_attempts" ]; then
+              echo "Build failed after $max_attempts attempts for target: $TARGET" >&2
+              exit 1
+            fi
+
+            sleep_seconds=$((attempt * 15))
+            echo "Retrying target $TARGET in ${sleep_seconds}s (attempt $((attempt + 1))/$max_attempts)..." >&2
+            sleep "$sleep_seconds"
+          done
