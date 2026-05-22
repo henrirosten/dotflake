@@ -154,24 +154,31 @@ own-journal-clean() {
 
 own-tmp-clean() {
   if [ "${1:-}" = "-h" ]; then
-    echo "Delete top-level entries in /tmp that no readable process has open"
+    echo "Clean /tmp using the system tmpfiles age policy"
     echo "Usage: own-tmp-clean"
     return
   fi
-  # One /proc pass collects every top-level /tmp path referenced by a readable
-  # process (open fds, cwd, exe, root, and memory-mapped files). The previous
-  # per-file 'fuser' walk forked once per entry and hung on large /tmp trees.
-  local in_use
-  in_use="$(
-    {
-      find /proc -maxdepth 4 -type l -lname '/tmp/*' -printf '%l\n' 2>/dev/null
-      awk '$NF ~ "^/tmp/"{print $NF}' /proc/[0-9]*/maps 2>/dev/null
-    } | grep -v ' (deleted)$' | sed -n 's|^\(/tmp/[^/]\{1,\}\).*|\1|p' | sort -u
-  )"
-  local entry
-  while IFS= read -r -d '' entry; do
-    grep -qxF -- "$entry" <<<"$in_use" || rm -rf -- "$entry" 2>/dev/null
-  done < <(find /tmp -mindepth 1 -maxdepth 1 -print0)
+  if ! command -v systemd-tmpfiles >/dev/null 2>&1; then
+    echo "Error: systemd-tmpfiles not found; refusing unsafe fallback" >&2
+    return 1
+  fi
+  echo "Cleaning /tmp using systemd-tmpfiles policy..."
+  local tmpfiles_pid rc elapsed=0
+  systemd-tmpfiles --clean --prefix=/tmp --no-pager &
+  tmpfiles_pid=$!
+  while kill -0 "$tmpfiles_pid" 2>/dev/null; do
+    sleep 10
+    if kill -0 "$tmpfiles_pid" 2>/dev/null; then
+      elapsed=$((elapsed + 10))
+      echo "Still cleaning /tmp... (${elapsed}s elapsed)"
+    fi
+  done
+  wait "$tmpfiles_pid"
+  rc=$?
+  if [ "$rc" -eq 0 ]; then
+    echo "Done cleaning /tmp"
+  fi
+  return "$rc"
 }
 
 own-nix-diff() {
