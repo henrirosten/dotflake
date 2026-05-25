@@ -24,6 +24,7 @@
     "org/gnome/desktop/interface" = {
       color-scheme = "prefer-dark";
       show-battery-percentage = lib.hm.gvariant.mkBoolean true;
+      gtk-enable-primary-paste = lib.hm.gvariant.mkBoolean true;
     };
     # Keyboard repeat settings are configured system-wide in nix-modules/gui.nix
     # via services.xserver.autoRepeatDelay and autoRepeatInterval
