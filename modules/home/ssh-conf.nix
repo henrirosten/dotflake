@@ -2,10 +2,10 @@
   programs.ssh = {
     enableDefaultConfig = false;
     enable = true;
-    matchBlocks = {
+    settings = {
       "*" = {
-        controlMaster = "auto";
-        controlPath = "~/.ssh/%C";
+        ControlMaster = "auto";
+        ControlPath = "~/.ssh/%C";
       };
     };
   };
