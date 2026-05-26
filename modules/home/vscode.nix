@@ -7,10 +7,7 @@
     profiles.default.extensions = with pkgs.vscode-extensions; [
       vscodevim.vim
       jnoortheen.nix-ide
-      # Temporary: disabled after the flake update because ms-python.python
-      # depends on jedi-language-server 0.46.0, which requires jedi < 0.20,
-      # while the current nixpkgs snapshot provides jedi 0.20.0.
-      # ms-python.python
+      ms-python.python
       mechatroner.rainbow-csv
       shardulm94.trailing-spaces
       bierner.github-markdown-preview
