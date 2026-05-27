@@ -89,6 +89,16 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+      - name: Free runner disk space
+        run: |
+          set -euo pipefail
+          df -h
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/share/swift
+          df -h
       - name: Install nix
         uses: cachix/install-nix-action@ab739621df7a23f52766f9ccc97f38da6b7af14f # v31.10.5
         with:
@@ -115,7 +125,7 @@ jobs:
           max_attempts=3
 
           for attempt in $(seq 1 "$max_attempts"); do
-            if nix build "$build_attr" -L; then
+            if nix build "$build_attr" --no-link; then
               exit 0
             fi
 
