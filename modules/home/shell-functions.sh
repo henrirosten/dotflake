@@ -153,32 +153,78 @@ own-journal-clean() {
 }
 
 own-tmp-clean() {
-  if [ "${1:-}" = "-h" ]; then
-    echo "Clean /tmp using the system tmpfiles age policy"
-    echo "Usage: own-tmp-clean"
+  local dry_run=0
+  case "${1:-}" in
+  -h | --help)
+    echo "Delete unused top-level entries from /tmp"
+    echo "Usage: own-tmp-clean [--dry-run]"
     return
-  fi
-  if ! command -v systemd-tmpfiles >/dev/null 2>&1; then
-    echo "Error: systemd-tmpfiles not found; refusing unsafe fallback" >&2
+    ;;
+  --dry-run)
+    dry_run=1
+    ;;
+  "")
+    ;;
+  *)
+    echo "Usage: own-tmp-clean [--dry-run]" >&2
+    return 1
+    ;;
+  esac
+  if ! command -v sudo >/dev/null 2>&1; then
+    echo "Error: sudo not found" >&2
     return 1
   fi
-  echo "Cleaning /tmp using systemd-tmpfiles policy..."
-  local tmpfiles_pid rc elapsed=0
-  systemd-tmpfiles --clean --prefix=/tmp --no-pager &
-  tmpfiles_pid=$!
-  while kill -0 "$tmpfiles_pid" 2>/dev/null; do
-    sleep 10
-    if kill -0 "$tmpfiles_pid" 2>/dev/null; then
-      elapsed=$((elapsed + 10))
-      echo "Still cleaning /tmp... (${elapsed}s elapsed)"
-    fi
-  done
-  wait "$tmpfiles_pid"
-  rc=$?
-  if [ "$rc" -eq 0 ]; then
-    echo "Done cleaning /tmp"
+  echo "Authenticating sudo for /tmp cleanup..."
+  if ! sudo -v; then
+    return 1
   fi
-  return "$rc"
+
+  echo "Scanning /tmp for active entries..."
+  local in_use
+  in_use="$(
+    {
+      sudo -n find /proc -maxdepth 4 -type l -lname '/tmp/*' -printf '%l\n' 2>/dev/null
+      sudo -n awk '$NF ~ "^/tmp/"{print $NF}' /proc/[0-9]*/maps 2>/dev/null
+      ss -xH -a 2>/dev/null | grep -o '/tmp/[^ ]*' || true
+    } | sed -n "/ (deleted)$/!s|^\(/tmp/[^/]\{1,\}\).*|\1|p" | sort -u
+  )"
+
+  echo "Cleaning unused top-level entries from /tmp..."
+  local removed=0 failed=0 start_time elapsed next_progress=5 entry
+  start_time=$SECONDS
+  while IFS= read -r -d '' entry; do
+    case "$entry" in
+    /tmp/systemd-private-* | /tmp/.X11-unix | /tmp/.ICE-unix | /tmp/.XIM-unix | /tmp/.font-unix | /tmp/.X[0-9]*-lock)
+      ;;
+    *)
+      if grep -qxF -- "$entry" <<<"$in_use"; then
+        :
+      elif [ "$dry_run" -eq 1 ]; then
+        echo "Would remove $entry"
+        removed=$((removed + 1))
+      elif sudo -n rm -rf --one-file-system -- "$entry"; then
+        removed=$((removed + 1))
+      else
+        failed=$((failed + 1))
+      fi
+      ;;
+    esac
+
+    elapsed=$((SECONDS - start_time))
+    if [ "$elapsed" -ge "$next_progress" ]; then
+      echo "Still cleaning /tmp... (${removed} removed, ${elapsed}s elapsed)"
+      next_progress=$((next_progress + 5))
+    fi
+  done < <(sudo -n find /tmp -mindepth 1 -maxdepth 1 -print0 2>/dev/null)
+
+  if [ "$dry_run" -eq 1 ]; then
+    echo "Dry run: would remove ${removed} entries"
+  else
+    echo "Done cleaning /tmp: removed ${removed}, failed ${failed}"
+  fi
+  if [ "$failed" -gt 0 ]; then
+    return 1
+  fi
 }
 
 own-nix-diff() {
