@@ -6,7 +6,8 @@
 
   home = {
     packages = with pkgs; [
-      burpsuite
+      # Re-enable once nixpkgs burpsuite no longer requires a flaky vendor fetch at build time.
+      # burpsuite
       chromium
       firefox
       flameshot
