@@ -30,7 +30,7 @@ jobs:
           extra_nix_config: |
             extra-trusted-substituters = http://127.0.0.1
       - name: Enable Magic Nix Cache
-        uses: DeterminateSystems/magic-nix-cache-action@3c034b51a9deec0a09ef1df8b436ac5db50fae94 # main@2026-04-15 (node24)
+        uses: DeterminateSystems/magic-nix-cache-action@14645543c3b214bedad3b9b49775cb042f4c1fc7 # main@2026-04-15 (node24)
         with:
           use-flakehub: false
       - name: Check .nix formatting
@@ -59,7 +59,7 @@ jobs:
           extra_nix_config: |
             extra-trusted-substituters = http://127.0.0.1
       - name: Enable Magic Nix Cache
-        uses: DeterminateSystems/magic-nix-cache-action@3c034b51a9deec0a09ef1df8b436ac5db50fae94 # main@2026-04-15 (node24)
+        uses: DeterminateSystems/magic-nix-cache-action@14645543c3b214bedad3b9b49775cb042f4c1fc7 # main@2026-04-15 (node24)
         with:
           use-flakehub: false
       - name: Discover targets
@@ -106,7 +106,7 @@ jobs:
           extra_nix_config: |
             extra-trusted-substituters = http://127.0.0.1
       - name: Enable Magic Nix Cache
-        uses: DeterminateSystems/magic-nix-cache-action@3c034b51a9deec0a09ef1df8b436ac5db50fae94 # main@2026-04-15 (node24)
+        uses: DeterminateSystems/magic-nix-cache-action@14645543c3b214bedad3b9b49775cb042f4c1fc7 # main@2026-04-15 (node24)
         with:
           use-flakehub: false
       - name: Build target '${{ matrix.target }}'
