@@ -2,8 +2,9 @@ name: flake update
 
 on:
   schedule:
-    # 00:17 UTC ~= 02:17 EET (03:17 in EEST / summer time)
+    # 00:17 Europe/Helsinki every day, stable across DST changes
     - cron: "17 0 * * *"
+      timezone: "Europe/Helsinki"
   workflow_dispatch:
   pull_request:
     paths:
