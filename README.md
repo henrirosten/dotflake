@@ -176,14 +176,14 @@ vpn list
 vpn <profile>
 ```
 
-To modify the local VPN secrets, edit `~/.config/dotflake/secrets/vpn.yaml` with `sops`, then reapply `home-manager switch --flake .#hrosten`.
+To modify the local VPN secrets, edit `~/.config/dotflake/secrets/vpn.yaml` with `sops`, then reapply `home-manager switch --flake .#hrosten`. On NixOS systems where Home Manager is applied through the system configuration, `nixos-rebuild switch --flake .#<host>` also picks up the change.
 
 To use `vpn` inside a VM:
 ```bash
 nix run .#generic-vm -- --share-dir ~/.config
 ```
 
-That shares `~/.config/dotflake/secrets/vpn.yaml` and `~/.config/sops/age/keys.txt` with the guest. After boot, run `vpn list` or `vpn <profile>` inside the VM.
+That shares `~/.config/dotflake/secrets/vpn.yaml` and the age key with the guest. After boot, run `vpn list` or `vpn <profile>` inside the VM.
 
 ## CI Workflows
 
