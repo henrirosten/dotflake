@@ -31,6 +31,7 @@ in
 
   home.packages = [
     pkgs.age
+    pkgs.openvpn
     pkgs.sops
     (pkgs.writeShellApplication {
       name = "vpn";
