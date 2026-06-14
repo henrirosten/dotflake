@@ -58,8 +58,6 @@ in
 
   # https://github.com/NixOS/nixpkgs/issues/180175
   systemd.services.NetworkManager-wait-online.enable = false;
-  # https://github.com/NixOS/nixpkgs/issues/296450
-  systemd.services.NetworkManager-ensure-profiles.after = [ "NetworkManager.service" ];
 
   security = {
     sudo = {
