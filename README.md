@@ -189,6 +189,7 @@ That shares `~/.config/dotflake/secrets/vpn.yaml` and the age key with the guest
 
 - `.github/workflows/check.yml`: formatting, lint, flake eval checks, and host build matrix
 - `.github/workflows/bootstrap-nix.yml`: bootstrap script lint + Ubuntu integration checks
+- `.github/workflows/flakevuln.yml`: vulnerability scan for `nixosConfigurations.x1.config.system.build.toplevel`
 - `.github/workflows/flake-update.yml`: scheduled/manual `flake.lock` update with VM smoke check
 - `.github/workflows/zizmor.yml`: GitHub Actions workflow security linting
 
