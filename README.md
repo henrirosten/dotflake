@@ -67,6 +67,12 @@ sudo nixos-rebuild switch --flake .#<host>
 ```
 Typical local hosts: `x1`, `t480`, `t14s`
 
+Show the deployed dotflake revision on a host:
+```bash
+nixos-version --configuration-revision
+```
+This reports the git revision (or dirty revision) of the flake the system was built from.
+
 ## Remote Deployment
 
 `scripts/deploy.sh` deploys to remote hosts by resolving their IP via MAC address lookup (ARP cache, falling back to nmap subnet scan).

@@ -9,6 +9,13 @@
 {
   environment.systemPackages = [ pkgs.nmap ];
 
+  # Record the flake revision in the deployed system so hosts can report
+  # the exact dotflake build with:
+  #   nixos-version --configuration-revision
+  system.configurationRevision = toString (
+    inputs.self.rev or inputs.self.dirtyRev or inputs.self.lastModified or "unknown"
+  );
+
   boot.loader = {
     systemd-boot.enable = lib.mkDefault true;
     systemd-boot.configurationLimit = lib.mkDefault 5;
