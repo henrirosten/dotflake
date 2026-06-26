@@ -34,7 +34,7 @@ jobs:
             extra-trusted-substituters = http://127.0.0.1
 
       - name: Enable Magic Nix Cache
-        uses: DeterminateSystems/magic-nix-cache-action@14645543c3b214bedad3b9b49775cb042f4c1fc7 # main@2026-04-15 (node24)
+        uses: DeterminateSystems/magic-nix-cache-action@76aaf8814cdb385b86597c32b8c51b66b69b0839 # main@2026-04-15 (node24)
         with:
           use-flakehub: false
 
