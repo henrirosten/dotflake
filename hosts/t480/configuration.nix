@@ -22,6 +22,14 @@ in
     hrosten.nixosModule
   ]);
 
+  nixpkgs.overlays = [
+    (_final: prev: {
+      throttled = prev.throttled.overrideAttrs (old: {
+        pythonPath = (old.pythonPath or [ ]) ++ [ prev.python3Packages.dbus-next ];
+      });
+    })
+  ];
+
   networking.hostName = "t480";
 
   system.autoUpgrade.dates = "02:00";
