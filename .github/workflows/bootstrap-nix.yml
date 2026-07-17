@@ -77,7 +77,7 @@ jobs:
       - name: Enable Magic Nix Cache
         id: magic_nix_cache
         continue-on-error: true
-        uses: DeterminateSystems/magic-nix-cache-action@76aaf8814cdb385b86597c32b8c51b66b69b0839 # main@2026-04-15 (node24)
+        uses: DeterminateSystems/magic-nix-cache-action@55718cd9ebf1737a061487d5ada21abf31e99a98 # main@2026-04-15 (node24)
         with:
           use-flakehub: false
 
