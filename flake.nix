@@ -26,7 +26,6 @@
 
     sbomnix = {
       url = "github:tiiuae/sbomnix";
-      inputs.nixpkgs.follows = "nixpkgs";
     };
 
     nix-claude-code = {
