@@ -44,8 +44,11 @@ in
       inputs.sbomnix.packages.${pkgs.stdenv.hostPlatform.system}.default
       tree
       wget
-      nerd-fonts.fira-code
-      nerd-fonts.droid-sans-mono
+      # Symbols-only Nerd Font: provides icon glyphs via fontconfig fallback
+      # without the full patched fonts, which fontconfig 2.18.x misclassifies
+      # (e.g. DroidSansM Nerd Font as sans-serif), breaking Chromium/Electron
+      # UI font selection: https://github.com/NixOS/nixpkgs/issues/541553
+      nerd-fonts.symbols-only
       psmisc
       source-code-pro
     ];
