@@ -1,15 +1,6 @@
 name: flakevuln
 
 on:
-  pull_request:
-    paths:
-      - ".github/workflows/flakevuln.yml"
-      - "flake.nix"
-      - "flake.lock"
-      - "flake/**"
-      - "hosts/**"
-      - "modules/**"
-      - "users/**"
   workflow_dispatch:
   schedule:
     # 03:47 Europe/Helsinki every day, stable across DST changes
@@ -26,6 +17,7 @@ permissions:
 jobs:
   scan-x1:
     name: Scan x1 vulnerabilities
+    if: github.repository == 'henrirosten/dotflake'
     runs-on: ubuntu-latest
     timeout-minutes: 180
 
@@ -36,7 +28,7 @@ jobs:
           persist-credentials: false
 
       - name: Run flakevuln
-        uses: tiiuae/flakevuln@9a98dd90933c5250a34f86db580ca6d9f8ed41d1
+        uses: tiiuae/flakevuln@a2ac15097e3d7524ca2384d43cde50b199965781
         with:
           targets: |
             nixosConfigurations.x1.config.system.build.toplevel
