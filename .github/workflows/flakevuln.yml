@@ -35,6 +35,7 @@ jobs:
           unstable-ref: github:NixOS/nixpkgs/nixos-unstable
           whitelist: .github/flakevuln/manual_analysis.csv
           nixprs: true
+          nixtracker: true
 
       - name: Upload flakevuln findings
         if: always()
