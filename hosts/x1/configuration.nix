@@ -58,6 +58,7 @@ in
     "i915.enable_psr=0"
     "i915.enable_dc=0"
   ];
+  hardware.intelgpu.vaapiDriver = "intel-media-driver";
 
   services.avahi.enable = false;
   system.autoUpgrade.dates = "weekly";
