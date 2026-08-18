@@ -311,11 +311,11 @@
         "vulnix": "vulnix"
       },
       "locked": {
-        "lastModified": 1786970129,
-        "narHash": "sha256-3LnnZrFBHJI4CHZSvf0XjWPMQUhtwatsygj4Q0f5WPo=",
+        "lastModified": 1787023765,
+        "narHash": "sha256-eRIG80fwS97qfVha3bc1V9BLhU3wG4ZVa7mmv4vUwUo=",
         "owner": "tiiuae",
         "repo": "sbomnix",
-        "rev": "5114a7d20f5cdedfaeefdd4d39f4c47552aa2b23",
+        "rev": "200a7b11daa5b2bcee7fefa05d9854157228dc95",
         "type": "github"
       },
       "original": {
