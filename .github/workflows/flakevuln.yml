@@ -28,7 +28,7 @@ jobs:
           persist-credentials: false
 
       - name: Run flakevuln
-        uses: tiiuae/flakevuln@3aacb479e9d3365381e59816cff7095d23ff35de # main@2026-08-18
+        uses: tiiuae/flakevuln@a3fd1c84ab53e731e8a81f171c847a849bdb4f0c # main@2026-08-19
         with:
           targets: |
             nixosConfigurations.x1.config.system.build.toplevel
