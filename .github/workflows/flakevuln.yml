@@ -28,13 +28,14 @@ jobs:
           persist-credentials: false
 
       - name: Run flakevuln
-        uses: tiiuae/flakevuln@da81269efd6175f7429ccddf411b930c7ef381da # main@2026-08-20
+        uses: tiiuae/flakevuln@ab23173a2dad1387019abd14c8a5c5fec9fce137
         with:
           targets: |
             nixosConfigurations.x1.config.system.build.toplevel
           unstable-ref: github:NixOS/nixpkgs/nixos-unstable
           whitelist: .github/flakevuln/manual_analysis.csv
           nixprs: true
+          nixprs-exclude-packages: linux
           nixtracker: true
 
       - name: Upload flakevuln findings
