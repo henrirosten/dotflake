@@ -3,3 +3,6 @@ extend-ignore-re = [
   ".*substituters = ",
   ".*<leader>ba "
 ]
+
+[default.extend-words]
+Hashi = "Hashi"

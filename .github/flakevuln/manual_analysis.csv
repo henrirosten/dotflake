@@ -1,4 +1,70 @@
 vuln_id,whitelist,package,version_local,version_local_regex,version_nixpkgs,version_upstream,comment
+(CVE-2026-3441|CVE-2026-3442|CVE-2026-4647|CVE-2026-6844|CVE-2026-6845),False,binutils,,2\.46(\.0)?,,,Valid: NVD describes GNU Binutils issues and local 2.46 source predates the 2.46.1 fixes.
+CVE-2024-58251,False,busybox,1.37.0,,,,Valid: NVD affected range is BusyBox <=1.37.0 and local patches do not address this CVE.
+CVE-2024-47554,False,commons-io,,2\.11\.0\.(jar|pom),,,Valid: NVD affected range is Apache Commons IO 2.0 to before 2.14.0 and this artifact is 2.11.0.
+CVE-2023-7216,False,cpio,2.15,,,,Valid: NVD describes GNU cpio path traversal and the local 2.15 derivation has no relevant patch.
+CVE-2026-6507,False,dnsmasq,2.93,,,,Valid: NVD describes dnsmasq BOOTREPLY handling and the local 2.93 derivation has no relevant patch.
+(CVE-2025-15276|CVE-2025-15277|CVE-2025-15278),False,fontforge,20251009,,,,Valid: NVD affected commits are ancestors of tag 20251009 and Nixpkgs only patches adjacent CVEs 15269 15275 and 15279.
+(CVE-2026-40467|CVE-2026-40468|CVE-2026-40553),False,gawk,5.3.2,,,,Valid: NVD affected range is GNU gawk <=5.4.0 and local 5.3.2 has no relevant patch.
+CVE-2022-3219,False,gnupg,2.4.9,,,,Valid: same GnuPG issue; Debian still marks 2.4.9 vulnerable and this derivation has no CVE patch.
+(CVE-2026-22816|CVE-2026-22865),False,gradle,8.14.4,,,,Valid: NVD describes Gradle native-platform issues fixed after local Gradle 8.14.4 and no local patch is present.
+CVE-2021-30499,False,libcaca,0.99.beta20,,,,Valid: NVD describes libcaca export_troff overflow and the local derivation only patches CVE-2026-42046.
+CVE-2026-35094,False,libinput,1.31.3,,,,Valid: NVD issue requires Lua plugin loading and this build has lua-plugins enabled with no relevant patch.
+CVE-2018-7263,False,libmad,0.15.1b,,,,Valid: NVD affected range includes libmad 0.15.1b and no CVE-2018-7263 patch is present.
+(CVE-2013-6393|CVE-2014-2525),False,libyaml,0.1.4,,,,Valid: NVD affected ranges cover LibYAML before 0.1.5 or 0.1.6 and local version is 0.1.4.
+(CVE-2026-1764|CVE-2026-1766|CVE-2026-1767),False,localsearch,3.11.1,,,,Valid: GNOME localsearch MP3 extractor needs vendor security patches and local derivation only carries the unrelated Landlock patch.
+CVE-2026-13757,False,p11-kit,0.26.2,,,,Valid: p11-kit fixed this in 0.26.3 or later and local 0.26.2 has no recursion-depth patch.
+CVE-2023-37769,False,pixman,0.46.4,,,,Valid: Debian and Ubuntu still mark pixman 0.46.4 vulnerable for this FPE issue and local derivation has no patch.
+CVE-2023-44709,False,plutosvg,0.0.8,,,,Valid: NVD affected commit is an ancestor of v0.0.8 and local patch is unrelated.
+(CVE-2025-15366|CVE-2026-0864|CVE-2026-11940|CVE-2026-11972|CVE-2026-1502|CVE-2026-3276|CVE-2026-4786|CVE-2026-5713|CVE-2026-6100|CVE-2026-7774|CVE-2026-8328|CVE-2026-9669),False,python,3.14.4,,,,Valid: NVD CPython affected range includes 3.14.4 and this derivation has no security backports.
+CVE-2025-66453,False,rhino,1.8.0,,,,Valid: NVD affected range is Rhino before 1.8.1 and local version is 1.8.0.
+(CVE-2025-8262|CVE-2025-9308),False,yarn,1.22.22,,,,Valid: NVD affected range includes Yarn 1.22.22 and the local derivation has no relevant patch.
+CVE-2024-13278,True,Diff,1.0.2,,,,Incorrect package: NVD record affects the Drupal Diff module; scanned component is the Haskell Diff package.
+CVE-2021-28794,True,ShellCheck,0.11.0,,,,Incorrect package: NVD record affects an unofficial Visual Studio Code ShellCheck extension; scanned component is the ShellCheck CLI.
+CVE-2024-9410,True,ada,3.4.4,,,,Incorrect package: NVD record affects the Ada.cx Sentry service component; scanned component is the ada library.
+CVE-2018-13162,True,alex,3.5.4.2,,,,Incorrect package: NVD record affects an Ethereum token contract named ALEX; scanned component is the Haskell Alex lexer generator.
+CVE-2021-43138,True,async,2.2.6,,,,Incorrect package: NVD record affects the npm async package; scanned component is the Haskell async package.
+(CVE-2021-27367|CVE-2022-31321|CVE-2023-5214|CVE-2025-34086),True,bolt,0.9.8,,,,Incorrect package: NVD records affect Bolt CMS or Puppet Bolt; scanned component is the Linux Thunderbolt daemon.
+CVE-2019-10010,True,commonmark,0.2.6.1,,,,Incorrect package: NVD record affects PHP League CommonMark; scanned component is the Haskell commonmark package.
+CVE-2017-18589,True,cookie,0.5.1,,,,Incorrect package: NVD record affects the Rust cookie crate; scanned component is the Haskell cookie package.
+CVE-2018-6553,True,cups,2.4.19,,,,Target mismatch: NVD record is for Ubuntu CUPS AppArmor profile packaging and fixed there before 2.2.7-1ubuntu2.1.
+(CVE-2022-42010|CVE-2022-42011|CVE-2022-42012),True,dbus,0.9.10,,,,Incorrect package: scanned component is the Rust dbus crate source and not the D-Bus daemon or libdbus implementation.
+(CVE-2022-42010|CVE-2022-42011|CVE-2022-42012),True,dbus,1,,,,Generated config false positive: underlying D-Bus is 1.16.2 which is newer than the NVD fixed ranges for these issues.
+CVE-2007-1397,True,fish,4.8.1,,,,Incorrect package: NVD record affects the FiSH IRC encryption plugin and not the fish shell.
+CVE-2020-26304,True,foundation,0.0.30,,,,Incorrect package: NVD record affects foundation-sites JavaScript framework; scanned component is the Haskell foundation package.
+(CVE-2021-21684|CVE-2022-30947|CVE-2022-36882|CVE-2022-36883|CVE-2022-36884|CVE-2022-38663),True,git,2.55.0,,,,Incorrect package: NVD records affect Jenkins Git Plugin and not the Git CLI.
+(CVE-2025-32989|CVE-2025-32990|CVE-2026-1584|CVE-2026-33845|CVE-2026-3832|CVE-2026-3833|CVE-2026-42009|CVE-2026-42010),True,gnutls,3.8.13,,,,Fixed in current source: GnuTLS 3.8.12 or 3.8.13 includes the relevant security fixes and local version is 3.8.13.
+CVE-2023-49292,True,go,,,,,Incorrect package: NVD CPE is ecies:go for the ECIES Go library; scanned component is the Go toolchain or bootstrap toolchain.
+CVE-2017-5436,True,graphite2,1.3.15,,,,Fixed before this build: upstream Graphite2 fixed the issue before 1.3.10 and local version is 1.3.15.
+CVE-2021-4276,True,hedgehog,,1\.5(-r2\.cabal)?,,,Incorrect package: NVD record affects dns-stats hedgehog and not the Haskell Hedgehog testing library.
+CVE-2025-3841,True,jam,,2\.6\.1(\.tar)?,,,Incorrect package: NVD record affects wix-incubator jam and not the scanned Jam build tool source.
+(CVE-2026-33948|CVE-2026-39979|CVE-2026-44777),True,jq,,1\.8\.2(-binlore)?,,,Fixed in current source: upstream fix commits 6374ae0 and 2f09060 are ancestors of jq-1.8.2 and the module-loader issue only affects through 1.8.2rc1.
+(CVE-2022-34176|CVE-2022-45380|CVE-2023-25761),True,junit,,4\.13\.2\.(jar|pom),,,Incorrect package: NVD records affect Jenkins JUnit Plugin and not JUnit 4 artifacts.
+CVE-2022-37416,True,libmpeg2,0.5.1,,,,Incorrect package: NVD record affects Ittiam Android libmpeg2 and not the libmpeg2 MPEG decoder package.
+(CVE-2025-6021|CVE-2025-6170),True,libxml2,2.15.3,,,,Fixed before this build: NVD affected ranges end before libxml2 2.14.4 or 2.14.5 and local version is 2.15.3.
+CVE-2025-10911,True,libxslt,1.1.45,,,,Fixed before this build: NVD affected range ends at libxslt 1.1.43 and local version is 1.1.45.
+CVE-2025-7425,True,libxslt,1.1.45,,,,Fixed in current source: Nixpkgs applies the upstream result-value-tree memory-management patch for this libxslt issue.
+CVE-2022-26635,True,memcached,1.6.42,,,,Incorrect package: NVD record affects PHP-Memcached and not the memcached server.
+CVE-2022-43410,True,mercurial,,7\.2\.2(-vendor|-vendor-staging)?,,,Incorrect package: NVD record affects Jenkins Mercurial Plugin and not Mercurial.
+(CVE-2010-4254|CVE-2011-0989|CVE-2011-0990|CVE-2011-0991|CVE-2011-0992),True,mono,6.14.1,,,,Legacy component mismatch: NVD records describe old Moonlight-specific Mono issues and this build does not include Moonlight.
+(CVE-2021-35047|CVE-2021-35048|CVE-2021-35049|CVE-2021-35050|CVE-2022-0486|CVE-2022-0997|CVE-2022-24388|CVE-2022-24389|CVE-2022-24390|CVE-2022-24391|CVE-2022-24392|CVE-2022-24393|CVE-2022-24394),True,network,3.2.8.0,,,,Incorrect package: NVD records affect Fidelis Network appliances and not the Haskell network package.
+CVE-2021-4336,True,ninja,1.13.2,,,,Incorrect package: NVD record affects ITRS monitor-ninja and not the Ninja build tool.
+CVE-2025-47436,True,orc,0.4.42,,,,Incorrect package: NVD record affects Apache ORC and not GNOME ORC.
+(CVE-2015-4155|CVE-2015-4156),True,parallel,3.2.2.0,,,,Incorrect package: NVD records affect GNU Parallel and not the Haskell parallel package.
+CVE-2024-11586,True,pulseaudio,17.0,,,,Target mismatch: NVD record is for Canonical Ubuntu pulseaudio integration and not upstream Nixpkgs PulseAudio.
+CVE-.*,True,python,,2\.7\..*,,,Build-time bootstrap artifact: Python 2.7 derivations are build-closure-only artifacts and absent from the runtime closure scan.
+(CVE-2020-1171|CVE-2020-1192|CVE-2020-17163|CVE-2024-49050|CVE-2025-49714),True,python,3.14.4,,,,Incorrect package: NVD records affect the Visual Studio Code Python extension and not CPython.
+(CVE-2021-33594|CVE-2021-33595|CVE-2021-33596|CVE-2021-40834|CVE-2021-40835|CVE-2021-44751|CVE-2022-28868|CVE-2022-28869|CVE-2022-28870|CVE-2022-28872|CVE-2022-28873|CVE-2022-38163|CVE-2022-38164|CVE-2022-47524),True,safe,,0\.3\.21(-r1\.cabal)?,,,Incorrect package: NVD records affect F-Secure SAFE browser/mobile products and not the Haskell safe package.
+CVE-2000-0006,True,strace,7.1,,,,Legacy NVD record with no current affected range; strace 7.1 is decades newer than the vulnerable implementation.
+CVE-2024-21524,True,stringbuilder,0.5.1,,,,Incorrect package: NVD record affects node-stringbuilder and not the Haskell stringbuilder package.
+(CVE-2021-21698|CVE-2022-29046|CVE-2022-29048),True,subversion,1.14.5,,,,Incorrect package: NVD records affect Jenkins Subversion Plugin and not Apache Subversion.
+CVE-2020-1416,True,typescript,5.9.3,,,,Incorrect package: NVD record affects Visual Studio and Visual Studio Code and not the TypeScript package.
+(CVE-2021-27400|CVE-2021-3024|CVE-2021-38554|CVE-2021-41802|CVE-2022-41316|CVE-2023-0620|CVE-2023-0665|CVE-2023-2121|CVE-2023-24999|CVE-2023-25000|CVE-2023-6337|CVE-2024-2048|CVE-2024-8365|CVE-2025-4166|CVE-2025-6011|CVE-2025-6014|CVE-2025-6037),True,vault,0.3.1.6,,,,Incorrect package: NVD records affect HashiCorp Vault and not the Haskell vault package.
+CVE-2015-7777,True,void,0.7.4,,,,Incorrect package: NVD record affects JosephErnest Void web app and not the Haskell void package.
+(CVE-2022-2145|CVE-2022-2225|CVE-2022-3320|CVE-2022-3512|CVE-2022-4428|CVE-2022-4457|CVE-2023-0238|CVE-2023-0652|CVE-2023-0654|CVE-2023-1412|CVE-2023-1862|CVE-2023-2754|CVE-2025-0651),True,warp,3.4.9,,,,Incorrect package: NVD records affect Cloudflare WARP client and not the Haskell warp web framework.
+(CVE-2021-4235|CVE-2022-3064),True,yaml,,0\.11\.11\.2(-r2\.cabal)?,,,Incorrect package: NVD records affect the Go yaml.v2 package and not the Haskell yaml package.
+(CVE-2002-0059|CVE-2022-37434|CVE-2023-45853|CVE-2023-6992),True,zlib,0.7.1.1,,,,Incorrect package: scanned component is the Haskell zlib package and NVD records affect C zlib or the Cloudflare zlib fork.
+CVE-2023-6992,True,zlib,1.3.2,,,,Incorrect package: NVD record affects the Cloudflare zlib fork and not upstream zlib 1.3.2.
 CVE-2024-9410,True,ada,3.4.4,,3.4.4,4.0.0,False positive: scanner triage classified the Nixpkgs package/version as not affected based on Repology/upstream package data.
 CVE-2018-13162,True,alex,3.5.4.2,,3.5.4.2,3.5.4.2,False positive: scanner triage classified the Nixpkgs package/version as not affected based on Repology/upstream package data.
 CVE-2021-43138,True,async,2.2.6,,2.2.6,2.2.6,False positive: scanner triage classified the Nixpkgs package/version as not affected based on Repology/upstream package data.
@@ -442,7 +508,7 @@ CVE-2025-15282,True,python,2.7.18.12,,3.14.6,3.14.6,False positive: scanner tria
 CVE-2025-15366,True,python,2.7.18.12,,3.14.6,3.14.6,False positive: scanner triage classified the Nixpkgs package/version as not affected based on Repology/upstream package data.
 CVE-2025-15366,True,python,3.14.4,,3.14.6,3.14.6,False positive: scanner triage classified the Nixpkgs package/version as not affected based on Repology/upstream package data.
 CVE-2025-15367,True,python,2.7.18.12,,3.14.6,3.14.6,False positive: scanner triage classified the Nixpkgs package/version as not affected based on Repology/upstream package data.
-CVE-2025-15367,True,python,3.14.4,,3.14.6,3.14.6,False positive: scanner triage classified the Nixpkgs package/version as not affected based on Repology/upstream package data.
+CVE-2025-15367,False,python,3.14.4,,3.14.6,3.14.6,Valid: CPython 3.14.4 source lacks the upstream poplib control-character validation fix.
 CVE-2025-1795,True,python,2.7.18.12,,3.14.6,3.14.6,False positive: scanner triage classified the Nixpkgs package/version as not affected based on Repology/upstream package data.
 CVE-2025-4138,True,python,2.7.18.12,,3.14.6,3.14.6,False positive: scanner triage classified the Nixpkgs package/version as not affected based on Repology/upstream package data.
 CVE-2025-4330,True,python,2.7.18.12,,3.14.6,3.14.6,False positive: scanner triage classified the Nixpkgs package/version as not affected based on Repology/upstream package data.
@@ -476,7 +542,7 @@ CVE-2026-3276,True,python,3.14.4,,3.14.6,3.14.6,False positive: scanner triage c
 CVE-2026-3298,True,python,3.14.4,,3.14.6,3.14.6,Not applicable to this target: CVE is Windows-only or Windows install-layout specific; target host platform is x86_64-linux.
 CVE-2026-3446,True,python,2.7.18.12,,3.14.6,3.14.6,False positive: scanner triage classified the Nixpkgs package/version as not affected based on Repology/upstream package data.
 CVE-2026-3479,True,python,2.7.18.12,,3.14.6,3.14.6,Not a real target vulnerability: CVE record is disputed and states there is no vulnerability under the intended security model.
-CVE-2026-4360,True,python,3.14.4,,3.14.6,3.14.6,False positive: scanner triage classified the Nixpkgs package/version as not affected based on Repology/upstream package data.
+CVE-2026-4360,False,python,3.14.4,,3.14.6,3.14.6,Valid: CPython 3.14.4 source lacks the TarFile.extract filter_function propagation fix.
 CVE-2026-4786,True,python,2.7.18.12,,3.14.6,3.14.6,False positive: scanner triage classified the Nixpkgs package/version as not affected based on Repology/upstream package data.
 CVE-2026-4786,True,python,3.14.4,,3.14.6,3.14.6,False positive: scanner triage classified the Nixpkgs package/version as not affected based on Repology/upstream package data.
 CVE-2026-5713,True,python,3.14.4,,3.14.6,3.14.6,False positive: scanner triage classified the Nixpkgs package/version as not affected based on Repology/upstream package data.
@@ -622,3 +688,149 @@ CVE-2022-1271,True,xz,1.9.jar,,,,Incorrect package: CVE affects GNU gzip zgrep a
 CVE-2022-1271,True,xz,1.9.pom,,,,Incorrect package: CVE affects GNU gzip zgrep and XZ Utils xzgrep command-line utilities; scanned component is Maven org.tukaani:xz Java artifact metadata.
 CVE-2026-34743,True,xz,1.9.jar,,,,Incorrect package: CVE affects XZ Utils liblzma C code; scanned component is Maven org.tukaani:xz Java artifact.
 CVE-2026-34743,True,xz,1.9.pom,,,,Incorrect package: CVE affects XZ Utils liblzma C code; scanned component is Maven org.tukaani:xz Java artifact metadata.
+CVE-2026-73434,True,gstreamer,1.28.5,,,,Component mismatch: the CVE affects gst-plugins-good/avidemux; the resolved component is GStreamer core and the closure has no gst-plugins-good component.
+CVE-2026-73433,True,gstreamer,1.28.5,,,,Component mismatch: the CVE affects gst-plugins-good/avidemux; the resolved component is GStreamer core and the closure has no gst-plugins-good component.
+CVE-2026-59851,True,libssh,0.12.2,,,,Upstream libssh states this issue was fixed in 0.12.1; the scanned version is 0.12.2.
+CVE-2026-59850,True,libssh,0.12.2,,,,Upstream libssh states this issue was fixed in 0.12.1; the scanned version is 0.12.2.
+CVE-2026-59849,True,libssh,0.12.2,,,,Upstream libssh states this issue was fixed in 0.12.1; the scanned version is 0.12.2.
+CVE-2026-59848,True,libssh,0.12.2,,,,Upstream libssh states this issue was fixed in 0.12.1; the scanned version is 0.12.2.
+CVE-2026-59847,True,libssh,0.12.2,,,,Upstream libssh states this issue was fixed in 0.12.1; the scanned version is 0.12.2.
+CVE-2026-59846,True,libssh,0.12.2,,,,Upstream libssh states this issue was fixed in 0.12.1; the scanned version is 0.12.2.
+CVE-2026-59845,True,libssh,0.12.2,,,,Upstream libssh states this issue was fixed in 0.12.1; the scanned version is 0.12.2.
+CVE-2026-59844,True,libssh,0.12.2,,,,Upstream libssh states this issue was fixed in 0.12.1; the scanned version is 0.12.2.
+CVE-2026-59843,True,libssh,0.12.2,,,,Upstream libssh states this issue was fixed in 0.12.1; the scanned version is 0.12.2.
+CVE-2026-59842,True,libssh,0.12.2,,,,Upstream libssh states this issue was fixed in 0.12.1; the scanned version is 0.12.2.
+CVE-2026-58521,True,cargo,1.97.1,,0.4.9,0.4.9,Incorrect package: NVD CPE is mediawiki:cargo for the MediaWiki Cargo extension; scanned component is Rust Cargo 1.97.1.
+CVE-2026-58519,True,cargo,1.97.1,,0.4.9,0.4.9,Incorrect package: NVD CPE is mediawiki:cargo for the MediaWiki Cargo extension; scanned component is Rust Cargo 1.97.1.
+CVE-.*,True,perl,,.*-binlore,,,Generated buildtime-only artifact: binlore output is present with vulnxscan --buildtime but absent from the runtime closure scan; perl env rows remain active unless reviewed separately.
+CVE-2026-55655,True,openssh,10.5p1,,,,"Downstream/product mismatch: the record applies to Red Hat/Ubuntu-specific packages or patches, not upstream Nixpkgs OpenSSH."
+CVE-2026-55654,True,openssh,10.5p1,,,,"Downstream/product mismatch: the record applies to Red Hat/Ubuntu-specific packages or patches, not upstream Nixpkgs OpenSSH."
+CVE-2026-55653,True,openssh,10.5p1,,,,"Downstream/product mismatch: the record applies to Red Hat/Ubuntu-specific packages or patches, not upstream Nixpkgs OpenSSH."
+CVE-.*,True,go,,.*-linux-amd64-bootstrap,,,Build-time bootstrap artifact: Go linux-amd64 bootstrap toolchain derivations are build-closure-only artifacts; non-bootstrap Go rows remain active.
+CVE-.*,True,gzip,,1\.2\.4,,,Build-time bootstrap artifact: gzip 1.2.4 bootstrap derivations are build-closure-only artifacts; current gzip rows remain active.
+CVE-2026-39841,True,cargo,1.97.1,,0.4.9,0.4.9,Incorrect package: NVD CPE is mediawiki:cargo for the MediaWiki Cargo extension; scanned component is Rust Cargo 1.97.1.
+CVE-2026-39840,True,cargo,1.97.1,,0.4.9,0.4.9,Incorrect package: NVD CPE is mediawiki:cargo for the MediaWiki Cargo extension; scanned component is Rust Cargo 1.97.1.
+CVE-2026-39839,True,cargo,1.97.1,,0.4.9,0.4.9,Incorrect package: NVD CPE is mediawiki:cargo for the MediaWiki Cargo extension; scanned component is Rust Cargo 1.97.1.
+CVE-2026-39837,True,cargo,1.97.1,,0.4.9,0.4.9,Incorrect package: NVD CPE is mediawiki:cargo for the MediaWiki Cargo extension; scanned component is Rust Cargo 1.97.1.
+CVE-2026-24450,True,libraw,0.22.1,,,,The corresponding upstream TALOS fix commit is present in LibRaw tag 0.22.1; Debian also records 0.22.1 as fixed.
+CVE-2026-21444,True,libtpms,0.10.2-unstable-2026-05-06,,,,"Official affected range is >=0.10.0,<0.10.2; this snapshot is based on 0.10.2 and is outside it."
+CVE-2026-21413,True,libraw,0.22.1,,,,The corresponding upstream TALOS fix commit is present in LibRaw tag 0.22.1; Debian also records 0.22.1 as fixed.
+CVE-2026-20911,True,libraw,0.22.1,,,,The corresponding upstream TALOS fix commit is present in LibRaw tag 0.22.1; Debian also records 0.22.1 as fixed.
+CVE-2026-20884,True,libraw,0.22.1,,,,The corresponding upstream TALOS fix commit is present in LibRaw tag 0.22.1; Debian also records 0.22.1 as fixed.
+CVE-.*,True,python,,2\.7\..*,,,Build-time bootstrap artifact: Python 2.7 derivations are build-closure-only artifacts; Python 3 rows remain active.
+CVE-2026-15370,True,libssh,0.12.2,,,,Upstream libssh states this issue was fixed in 0.12.1; the scanned version is 0.12.2.
+CVE-2026-14363,True,cargo,1.97.1,,0.4.9,0.4.9,Incorrect package: NVD CPE is mediawiki:cargo for the MediaWiki Cargo extension; scanned component is Rust Cargo 1.97.1.
+CVE-2026-12892,True,gstreamer,1.28.5,,,,Component mismatch: the CVE affects gst-plugins-bad; the resolved component is GStreamer core and the closure has no gst-plugins-bad component.
+CVE-2026-12891,True,gstreamer,1.28.5,,,,Component mismatch: the CVE affects gst-plugins-bad; the resolved component is GStreamer core and the closure has no gst-plugins-bad component.
+CVE-.*,True,glibc,,.*-source-unsecvars,,,Generated buildtime-only artifact: source-unsecvars output is present with vulnxscan --buildtime but absent from the runtime closure scan.
+CVE-2026-6238,True,glibc,2.42-67,,,,The Nixpkgs glibc 2.42-67 derivation contains this fix in 2.42-master.patch or an explicit CVE backport.
+CVE-2026-5928,True,glibc,2.42-67,,,,The Nixpkgs glibc 2.42-67 derivation contains this fix in 2.42-master.patch or an explicit CVE backport.
+CVE-2026-5450,True,glibc,2.42-67,,,,The Nixpkgs glibc 2.42-67 derivation contains this fix in 2.42-master.patch or an explicit CVE backport.
+CVE-2026-5435,True,glibc,2.42-67,,,,The Nixpkgs glibc 2.42-67 derivation contains this fix in 2.42-master.patch or an explicit CVE backport.
+CVE-2026-5201,True,gdk-pixbuf,2.44.7,,,,Fixed before this build: Debian records 2.44.6 as fixed and 2.44.7 is the scanned upstream version.
+CVE-2026-4775,True,libtiff,4.7.2,,,,Fixed before libtiff 4.7.2 (Debian fixed-version data is 4.7.0/4.7.1 or earlier).
+CVE-2026-4438,True,glibc,2.42-67,,,,The Nixpkgs glibc 2.42-67 derivation contains this fix in 2.42-master.patch or an explicit CVE backport.
+CVE-2026-4437,True,glibc,2.42-67,,,,The Nixpkgs glibc 2.42-67 derivation contains this fix in 2.42-master.patch or an explicit CVE backport.
+CVE-2026-4360,True,python3,3.14.7,,,,Official CPython range ends before 3.14.7; 3.14.7 is the fixed boundary.
+CVE-2026-4046,True,glibc,2.42-67,,,,The Nixpkgs glibc 2.42-67 derivation contains this fix in 2.42-master.patch or an explicit CVE backport.
+CVE-2026-3497,True,openssh,10.5p1,,,,"Downstream/product mismatch: the record applies to Red Hat/Ubuntu-specific packages or patches, not upstream Nixpkgs OpenSSH."
+CVE-2026-0915,True,glibc,2.42-67,,,,The Nixpkgs glibc 2.42-67 derivation contains this fix in 2.42-master.patch or an explicit CVE backport.
+CVE-2026-0861,True,glibc,2.42-67,,,,The Nixpkgs glibc 2.42-67 derivation contains this fix in 2.42-master.patch or an explicit CVE backport.
+CVE-2025-69652,True,binutils,,2\.46(\.0)?,,,All referenced upstream fix commits are ancestors of the official binutils-2_46 tag; both local 2.46 spellings use that release source.
+CVE-2025-69651,True,binutils,,2\.46(\.0)?,,,All referenced upstream fix commits are ancestors of the official binutils-2_46 tag; both local 2.46 spellings use that release source.
+CVE-2025-69650,True,binutils,,2\.46(\.0)?,,,All referenced upstream fix commits are ancestors of the official binutils-2_46 tag; both local 2.46 spellings use that release source.
+CVE-2025-69649,True,binutils,,2\.46(\.0)?,,,All referenced upstream fix commits are ancestors of the official binutils-2_46 tag; both local 2.46 spellings use that release source.
+CVE-2025-62689,True,libmicrohttpd,1.0.6,,,,The shared upstream fix commit ff13abc is an ancestor of release v1.0.6.
+CVE-2025-59777,True,libmicrohttpd,1.0.6,,,,The shared upstream fix commit ff13abc is an ancestor of release v1.0.6.
+CVE-2025-15281,True,glibc,2.42-67,,,,The Nixpkgs glibc 2.42-67 derivation contains this fix in 2.42-master.patch or an explicit CVE backport.
+CVE-2025-8058,True,glibc,2.42-67,,,,The Nixpkgs glibc 2.42-67 derivation contains this fix in 2.42-master.patch or an explicit CVE backport.
+CVE-2025-5745,True,glibc,2.42-67,,,,The Nixpkgs glibc 2.42-67 derivation contains this fix in 2.42-master.patch or an explicit CVE backport.
+CVE-2025-5702,True,glibc,2.42-67,,,,The Nixpkgs glibc 2.42-67 derivation contains this fix in 2.42-master.patch or an explicit CVE backport.
+CVE-2024-21485,True,dash,0.5.13.5,,,,Incorrect package: NVD CPE is plotly:dash; scanned component is the dash POSIX shell for x86_64-linux.
+CVE-2023-52356,True,libtiff,4.7.2,,,,Fixed before libtiff 4.7.2 (Debian fixed-version data is 4.7.0/4.7.1 or earlier).
+CVE-2023-51767,True,openssh,10.5p1,,,,Official description limits affected OpenSSH versions to 10.0 and earlier; local version is 10.5p1 (the supplier also disputes it).
+CVE-2023-49292,True,go,1.25.13,,1.27.0,1.27.0,Incorrect package: NVD CPE is ecies:go for the ECIES Go library; scanned component is the Go toolchain.
+CVE-2023-6277,True,libtiff,4.7.2,,,,Fixed before libtiff 4.7.2 (Debian fixed-version data is 4.7.0/4.7.1 or earlier).
+CVE-2023-6228,True,libtiff,4.7.2,,,,Fixed before libtiff 4.7.2 (Debian fixed-version data is 4.7.0/4.7.1 or earlier).
+CVE-2023-5341,True,imagemagick,7.1.2-29,,,,Fixed on old ImageMagick 6.x lines; ImageMagick 7.1.2-29 is newer than the recorded fixed releases.
+CVE-2023-4039,True,gcc,15.3.0,,,,Target mismatch: the CVE applies only when GCC targets AArch64; this derivation targets x86_64-linux.
+OSV-2021-777,True,libxml2,2.15.3,,2.15.3,2.15.3,Fixed upstream in libxml2 2.9.13; the scanned 2.15.3 package is newer than the fixed release.
+CVE-2019-1010025,True,glibc,2.42-67,,2.42,2.44,NVD description records vendor position that ASLR bypass itself is not a vulnerability.
+CVE-2019-1010025,True,glibc,2.42,,2.42,2.44,NVD description records vendor position that ASLR bypass itself is not a vulnerability.
+CVE-2019-1010024,True,glibc,2.42-67,,2.42,2.44,NVD description records upstream/vendor position that this is a non-security bug with no real threat.
+CVE-2019-1010024,True,glibc,2.42,,2.42,2.44,NVD description records upstream/vendor position that this is a non-security bug with no real threat.
+CVE-2019-1010023,True,glibc,2.42-67,,2.42,2.44,NVD description records upstream/vendor position that this is a non-security bug with no real threat.
+CVE-2019-1010023,True,glibc,2.42,,2.42,2.44,NVD description records upstream/vendor position that this is a non-security bug with no real threat.
+CVE-2019-1010022,True,glibc,2.42-67,,2.42,2.44,NVD description records upstream/vendor position that this is a non-security bug with no real threat.
+CVE-2019-1010022,True,glibc,2.42,,2.42,2.44,NVD description records upstream/vendor position that this is a non-security bug with no real threat.
+CVE-2017-5506,True,imagemagick,7.1.2-29,,,,Fixed on old ImageMagick 6.x lines; ImageMagick 7.1.2-29 is newer than the recorded fixed releases.
+CVE-2016-7538,True,imagemagick,7.1.2-29,,,,Fixed on old ImageMagick 6.x lines; ImageMagick 7.1.2-29 is newer than the recorded fixed releases.
+CVE-2014-9826,True,imagemagick,7.1.2-29,,,,Fixed on old ImageMagick 6.x lines; ImageMagick 7.1.2-29 is newer than the recorded fixed releases.
+CVE-2014-9278,True,openssh,10.5p1,,,,"Downstream/product mismatch: the record applies to Red Hat/Ubuntu-specific packages or patches, not upstream Nixpkgs OpenSSH."
+CVE-2010-4756,True,glibc,2.42-67,,2.42,2.44,Sourceware bug 18012 for CVE-2010-4756 is RESOLVED INVALID and carries a negative security flag.
+CVE-2010-4756,True,glibc,2.42,,2.42,2.44,Sourceware bug 18012 for CVE-2010-4756 is RESOLVED INVALID and carries a negative security flag.
+CVE-2008-3844,True,openssh,10.5p1,,,,"Downstream/product mismatch: the record applies to Red Hat/Ubuntu-specific packages or patches, not upstream Nixpkgs OpenSSH."
+CVE-2007-2768,True,openssh,10.5p1,,,,Legacy OPIE/PAM-specific issue; that integration is not present in this upstream Nixpkgs OpenSSH build.
+CVE-2026-27631,True,exiv2,0.28.8,,,,NVD description says versions prior to 0.28.8 are affected and 0.28.8 is fixed; local package is 0.28.8.
+CVE-2026-11604,True,openvpn,2.6.21,,,,Target mismatch: CVE affects the Windows ovpn-dco-win kernel driver; scanned component is Linux OpenVPN.
+CVE-2026-63649,True,openvpn,2.6.21,,,,Target mismatch: CVE affects the Windows OpenVPN interactive service; scanned component is Linux OpenVPN.
+CVE-2026-4360,True,python3,3.13.15,,,,Fixed in this CPython source: TarFile.extract passes filter_function to _extract_one.
+CVE-2025-25468,True,ffmpeg,,8\.1\.2|9\.0,,,Referenced upstream fix commit d5873be is present in both local FFmpeg release sources.
+CVE-2025-25469,True,ffmpeg,,8\.1\.2|9\.0,,,Referenced upstream fix commit d5873be is present in both local FFmpeg release sources.
+CVE-2024-38517,True,rapidjson,1.1.0-unstable-2025-02-05,,,,Referenced RapidJSON fix commit 8269bc2 is present in the local source.
+CVE-2024-3220,True,python3,3.13.15,,,,Windows-only mimetypes path issue; target is x86_64-linux and Nixpkgs rewrites knownfiles to the Nix store MIME database.
+CVE-2021-43635,True,codex,0.149.0,,,,Incorrect package: CVE affects jcv8000/Codex notes app via Notebook/Page name field; scanned component is OpenAI Codex CLI from codex-cli-nix.
+CVE-2021-3982,True,gnome-shell,50.4,,,,Target-specific false positive: NVD limits impact to distributions granting CAP_SYS_NICE to gnome-shell; this Nix store output has no file capability.
+CVE-2020-24490,True,bluez,5.87,,,,NVD requires old vulnerable Linux kernel ranges; this target uses linux 6.18.45 outside the affected kernel ranges.
+CVE-2011-2411,True,samba,4.23.10,,,,Target mismatch: NVD record is for HP NonStop Servers using Samba; scanned package is Nixpkgs Samba on x86_64-linux.
+CVE-2005-0238,True,epiphany,50.4,,,,Legacy NVD wildcard with no current affected range; record describes a 2005 IDN homograph issue not applicable to Epiphany 50.4.
+CVE-2014-6492,True,firefox,154.0,,,,Legacy or component-specific NVD record with no affected range for current Firefox; scanned component is Firefox 154.0 on Linux.
+CVE-2011-0064,True,firefox,154.0,,,,Legacy or component-specific NVD record with no affected range for current Firefox; scanned component is Firefox 154.0 on Linux.
+CVE-2009-4630,True,firefox,154.0,,,,Legacy or component-specific NVD record with no affected range for current Firefox; scanned component is Firefox 154.0 on Linux.
+CVE-2009-4130,True,firefox,154.0,,,,Legacy or component-specific NVD record with no affected range for current Firefox; scanned component is Firefox 154.0 on Linux.
+CVE-2009-4129,True,firefox,154.0,,,,Legacy or component-specific NVD record with no affected range for current Firefox; scanned component is Firefox 154.0 on Linux.
+CVE-2009-4102,True,firefox,154.0,,,,Legacy or component-specific NVD record with no affected range for current Firefox; scanned component is Firefox 154.0 on Linux.
+CVE-2009-1597,True,firefox,154.0,,,,Legacy or component-specific NVD record with no affected range for current Firefox; scanned component is Firefox 154.0 on Linux.
+CVE-2007-6715,True,firefox,154.0,,,,Legacy or component-specific NVD record with no affected range for current Firefox; scanned component is Firefox 154.0 on Linux.
+CVE-2007-5967,True,firefox,154.0,,,,Legacy or component-specific NVD record with no affected range for current Firefox; scanned component is Firefox 154.0 on Linux.
+CVE-2007-4013,True,firefox,154.0,,,,Legacy or component-specific NVD record with no affected range for current Firefox; scanned component is Firefox 154.0 on Linux.
+CVE-2007-3827,True,firefox,154.0,,,,Legacy or component-specific NVD record with no affected range for current Firefox; scanned component is Firefox 154.0 on Linux.
+CVE-2007-3670,True,firefox,154.0,,,,Legacy or component-specific NVD record with no affected range for current Firefox; scanned component is Firefox 154.0 on Linux.
+CVE-2007-2176,True,firefox,154.0,,,,Legacy or component-specific NVD record with no affected range for current Firefox; scanned component is Firefox 154.0 on Linux.
+CVE-2007-1970,True,firefox,154.0,,,,Legacy or component-specific NVD record with no affected range for current Firefox; scanned component is Firefox 154.0 on Linux.
+CVE-2007-0896,True,firefox,154.0,,,,Legacy or component-specific NVD record with no affected range for current Firefox; scanned component is Firefox 154.0 on Linux.
+CVE-2003-1492,True,firefox,154.0,,,,Legacy or component-specific NVD record with no affected range for current Firefox; scanned component is Firefox 154.0 on Linux.
+CVE-2016-6131,True,libiberty,15.3.0,,,,Fixed in modern GCC/libiberty source; GCC 15.3.0 contains the post-2012 and post-2016 objalloc and demangler hardening fixes.
+CVE-2016-4493,True,libiberty,15.3.0,,,,Fixed in modern GCC/libiberty source; GCC 15.3.0 contains the post-2012 and post-2016 objalloc and demangler hardening fixes.
+CVE-2016-4492,True,libiberty,15.3.0,,,,Fixed in modern GCC/libiberty source; GCC 15.3.0 contains the post-2012 and post-2016 objalloc and demangler hardening fixes.
+CVE-2016-4491,True,libiberty,15.3.0,,,,Fixed in modern GCC/libiberty source; GCC 15.3.0 contains the post-2012 and post-2016 objalloc and demangler hardening fixes.
+CVE-2016-4490,True,libiberty,15.3.0,,,,Fixed in modern GCC/libiberty source; GCC 15.3.0 contains the post-2012 and post-2016 objalloc and demangler hardening fixes.
+CVE-2016-4489,True,libiberty,15.3.0,,,,Fixed in modern GCC/libiberty source; GCC 15.3.0 contains the post-2012 and post-2016 objalloc and demangler hardening fixes.
+CVE-2016-4488,True,libiberty,15.3.0,,,,Fixed in modern GCC/libiberty source; GCC 15.3.0 contains the post-2012 and post-2016 objalloc and demangler hardening fixes.
+CVE-2016-4487,True,libiberty,15.3.0,,,,Fixed in modern GCC/libiberty source; GCC 15.3.0 contains the post-2012 and post-2016 objalloc and demangler hardening fixes.
+CVE-2016-2226,True,libiberty,15.3.0,,,,Fixed in modern GCC/libiberty source; GCC 15.3.0 contains the post-2012 and post-2016 objalloc and demangler hardening fixes.
+CVE-2012-3509,True,libiberty,15.3.0,,,,Fixed in modern GCC/libiberty source; GCC 15.3.0 contains the post-2012 and post-2016 objalloc and demangler hardening fixes.
+CVE-2026-53260,True,linux,6.18.45,,,,Official kernel.org CVE metadata marks linux 6.18.45 unaffected for this CVE; NVD broad Linux CPE overmatches.
+CVE-2026-53232,True,linux,6.18.45,,,,Official kernel.org CVE metadata marks linux 6.18.45 unaffected for this CVE; NVD broad Linux CPE overmatches.
+CVE-2026-53090,True,linux,6.18.45,,,,Official kernel.org CVE metadata marks linux 6.18.45 unaffected for this CVE; NVD broad Linux CPE overmatches.
+CVE-2026-53078,True,linux,6.18.45,,,,Official kernel.org CVE metadata marks linux 6.18.45 unaffected for this CVE; NVD broad Linux CPE overmatches.
+CVE-2026-53027,True,linux,6.18.45,,,,Official kernel.org CVE metadata marks linux 6.18.45 unaffected for this CVE; NVD broad Linux CPE overmatches.
+CVE-2026-53005,True,linux,6.18.45,,,,Official kernel.org CVE metadata marks linux 6.18.45 unaffected for this CVE; NVD broad Linux CPE overmatches.
+CVE-2026-46252,True,linux,6.18.45,,,,Official kernel.org CVE metadata marks linux 6.18.45 unaffected for this CVE; NVD broad Linux CPE overmatches.
+CVE-2026-46203,True,linux,6.18.45,,,,Official kernel.org CVE metadata marks linux 6.18.45 unaffected for this CVE; NVD broad Linux CPE overmatches.
+CVE-2026-46130,True,linux,6.18.45,,,,Official kernel.org CVE metadata marks linux 6.18.45 unaffected for this CVE; NVD broad Linux CPE overmatches.
+CVE-2026-46092,True,linux,6.18.45,,,,Official kernel.org CVE metadata marks linux 6.18.45 unaffected for this CVE; NVD broad Linux CPE overmatches.
+CVE-2026-46054,True,linux,6.18.45,,,,Official kernel.org CVE metadata marks linux 6.18.45 unaffected for this CVE; NVD broad Linux CPE overmatches.
+CVE-2026-45945,True,linux,6.18.45,,,,Official kernel.org CVE metadata marks linux 6.18.45 unaffected for this CVE; NVD broad Linux CPE overmatches.
+CVE-2026-45901,True,linux,6.18.45,,,,Official kernel.org CVE metadata marks linux 6.18.45 unaffected for this CVE; NVD broad Linux CPE overmatches.
+CVE-2026-45897,True,linux,6.18.45,,,,Official kernel.org CVE metadata marks linux 6.18.45 unaffected for this CVE; NVD broad Linux CPE overmatches.
+CVE-2026-43131,True,linux,6.18.45,,,,Official kernel.org CVE metadata marks linux 6.18.45 unaffected for this CVE; NVD broad Linux CPE overmatches.
+CVE-2026-31709,True,linux,6.18.45,,,,Official kernel.org CVE metadata marks linux 6.18.45 unaffected for this CVE; NVD broad Linux CPE overmatches.
+CVE-2026-31589,True,linux,6.18.45,,,,Official kernel.org CVE metadata marks linux 6.18.45 unaffected for this CVE; NVD broad Linux CPE overmatches.
+CVE-2026-31560,True,linux,6.18.45,,,,Official kernel.org CVE metadata marks linux 6.18.45 unaffected for this CVE; NVD broad Linux CPE overmatches.
+CVE-2026-31420,True,linux,6.18.45,,,,Official kernel.org CVE metadata marks linux 6.18.45 unaffected for this CVE; NVD broad Linux CPE overmatches.
+CVE-2026-23442,True,linux,6.18.45,,,,Official kernel.org CVE metadata marks linux 6.18.45 unaffected for this CVE; NVD broad Linux CPE overmatches.
+CVE-2026-23371,True,linux,6.18.45,,,,Official kernel.org CVE metadata marks linux 6.18.45 unaffected for this CVE; NVD broad Linux CPE overmatches.
+CVE-2026-23327,True,linux,6.18.45,,,,Official kernel.org CVE metadata marks linux 6.18.45 unaffected for this CVE; NVD broad Linux CPE overmatches.
+CVE-2025-71289,True,linux,6.18.45,,,,Official kernel.org CVE metadata marks linux 6.18.45 unaffected for this CVE; NVD broad Linux CPE overmatches.
+CVE-2023-52904,True,linux,6.18.45,,,,Official kernel.org CVE metadata marks linux 6.18.45 unaffected for this CVE; NVD broad Linux CPE overmatches.

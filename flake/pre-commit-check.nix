@@ -21,7 +21,10 @@ inputs.git-hooks-nix.lib.${system}.run {
     # normalize line endings
     mixed-line-endings.enable = true;
     # spell check
-    typos.enable = true;
+    typos = {
+      enable = true;
+      settings.configPath = ".typos.toml";
+    };
     # nix formatter
     nixfmt.enable = true;
     # removes dead nix code
