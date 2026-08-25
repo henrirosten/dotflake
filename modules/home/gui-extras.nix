@@ -35,7 +35,7 @@
       gnome-tweaks
       google-chrome
       keepass
-      libreoffice-fresh
+      libreoffice-stable
       meld
     ];
   };
