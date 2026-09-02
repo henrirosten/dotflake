@@ -1,10 +1,6 @@
-name: flake update
+name: flake update smoke
 
 on:
-  schedule:
-    # 00:17 Europe/Helsinki every day, stable across DST changes
-    - cron: "17 0 * * *"
-      timezone: "Europe/Helsinki"
   workflow_dispatch:
   pull_request:
     paths:
@@ -12,138 +8,12 @@ on:
       - "flake.lock"
       - ".github/workflows/flake-update.yml"
 
+concurrency:
+  group: ${{ github.workflow }}.${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  update-and-pr:
-    if: github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 360
-    environment: flake-update
-    permissions:
-      contents: write
-      pull-requests: write
-      id-token: write
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Install nix
-        uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
-        with:
-          install_options: --no-daemon
-          extra_nix_config: |
-            extra-trusted-substituters = http://127.0.0.1
-            experimental-features = nix-command flakes
-            system-features = nixos-test benchmark big-parallel kvm
-
-      - name: Enable Magic Nix Cache
-        uses: DeterminateSystems/magic-nix-cache-action@55718cd9ebf1737a061487d5ada21abf31e99a98 # main@2026-04-15 (node24)
-        with:
-          use-flakehub: false
-
-      - name: Snapshot lockfile before update
-        run: cp flake.lock "${{ runner.temp }}/flake.lock.before"
-
-      - name: Update all flake inputs
-        run: nix flake update
-
-      - name: Detect lockfile changes
-        id: changes
-        run: |
-          if git diff --quiet -- flake.lock; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Run x1 VM codex smoke check
-        if: steps.changes.outputs.changed == 'true'
-        run: nix build .#checks.x86_64-linux.x1-vm-smoke -L
-
-      - name: Generate pull request body
-        id: pr_body
-        if: steps.changes.outputs.changed == 'true'
-        env:
-          OLD_LOCKFILE: ${{ runner.temp }}/flake.lock.before
-          NEW_LOCKFILE: flake.lock
-          BODY_FILE: ${{ runner.temp }}/flake-update-pr-body.md
-        run: |
-          set -euo pipefail
-
-          cat > "$BODY_FILE" <<'EOF'
-          Automated flake input update.
-
-          - Updated all flake inputs with `nix flake update`.
-          - Verified `nix build .#checks.x86_64-linux.x1-vm-smoke -L`.
-
-          ### Updated Inputs
-          EOF
-
-          mapfile -t updates < <(
-            jq -r -s '
-              .[0] as $old
-              | .[1] as $new
-              | $new.nodes
-              | keys_unsorted[]
-              | . as $name
-              | ($old.nodes[$name] // {}) as $old_node
-              | ($new.nodes[$name] // {}) as $new_node
-              | ($old_node.locked.rev // "") as $old_rev
-              | ($new_node.locked.rev // "") as $new_rev
-              | select($old_rev != "" and $new_rev != "" and $old_rev != $new_rev)
-              | ($new_node.locked.type // $new_node.original.type // "") as $type
-              | ($new_node.locked.owner // $new_node.original.owner // "") as $owner
-              | ($new_node.locked.repo // $new_node.original.repo // "") as $repo
-              | select($type == "github" and $owner != "" and $repo != "")
-              | "\($name)\t\($owner)\t\($repo)\t\($old_rev)\t\($new_rev)"
-            ' "$OLD_LOCKFILE" "$NEW_LOCKFILE" | sort
-          )
-
-          if [ "${#updates[@]}" -eq 0 ]; then
-            echo "- No GitHub commit revision changes detected." >> "$BODY_FILE"
-          else
-            for row in "${updates[@]}"; do
-              IFS=$'\t' read -r name owner repo old_rev new_rev <<<"$row"
-              repo_url="https://github.com/${owner}/${repo}"
-              old_short="${old_rev:0:7}"
-              new_short="${new_rev:0:7}"
-              echo "- \`${name}\`: [\`${owner}/${repo}\`](${repo_url}) [\`${old_short}\`](${repo_url}/commit/${old_rev}) -> [\`${new_short}\`](${repo_url}/commit/${new_rev}) ([compare](${repo_url}/compare/${old_rev}...${new_rev}))" >> "$BODY_FILE"
-            done
-          fi
-
-          echo "path=$BODY_FILE" >> "$GITHUB_OUTPUT"
-
-      - name: Create pull request
-        id: cpr
-        if: steps.changes.outputs.changed == 'true'
-        continue-on-error: true
-        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
-        with:
-          # Use a PAT/App token if provided so downstream PR workflows run.
-          token: ${{ secrets.FLAKE_UPDATE_TOKEN || github.token }}
-          add-paths: flake.lock
-          branch: chore/automated-flake-update
-          delete-branch: true
-          signoff: true
-          commit-message: "Flake update"
-          title: "Flake update"
-          body-path: ${{ steps.pr_body.outputs.path }}
-
-      - name: PR creation fallback info
-        if: steps.changes.outputs.changed == 'true' && steps.cpr.outcome == 'failure'
-        env:
-          REPOSITORY: ${{ github.repository }}
-          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
-        run: |
-          echo "::warning::Automatic PR creation failed."
-          echo "::warning::Set repository secret FLAKE_UPDATE_TOKEN (PAT or GitHub App token with repo scope) so PR-created events trigger downstream workflows."
-          echo "::warning::If using GITHUB_TOKEN fallback, enable 'Allow GitHub Actions to create and approve pull requests' under Settings > Actions > General."
-          echo "::warning::Manual PR URL: https://github.com/${REPOSITORY}/compare/${DEFAULT_BRANCH}...chore/automated-flake-update?expand=1"
-
   x1-vm-smoke:
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 360
     permissions:
