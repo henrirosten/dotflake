@@ -1,24 +1,24 @@
-vuln_id,whitelist,package,version_local,version_local_regex,version_nixpkgs,version_upstream,comment
-(CVE-2026-3441|CVE-2026-3442|CVE-2026-4647|CVE-2026-6844|CVE-2026-6845),False,binutils,,2\.46(\.0)?,,,Valid: NVD describes GNU Binutils issues and local 2.46 source predates the 2.46.1 fixes.
-CVE-2024-58251,False,busybox,1.37.0,,,,Valid: NVD affected range is BusyBox <=1.37.0 and local patches do not address this CVE.
-CVE-2024-47554,False,commons-io,,2\.11\.0\.(jar|pom),,,Valid: NVD affected range is Apache Commons IO 2.0 to before 2.14.0 and this artifact is 2.11.0.
-CVE-2023-7216,False,cpio,2.15,,,,Valid: NVD describes GNU cpio path traversal and the local 2.15 derivation has no relevant patch.
-CVE-2026-6507,False,dnsmasq,2.93,,,,Valid: NVD describes dnsmasq BOOTREPLY handling and the local 2.93 derivation has no relevant patch.
-(CVE-2025-15276|CVE-2025-15277|CVE-2025-15278),False,fontforge,20251009,,,,Valid: NVD affected commits are ancestors of tag 20251009 and Nixpkgs only patches adjacent CVEs 15269 15275 and 15279.
-(CVE-2026-40467|CVE-2026-40468|CVE-2026-40553),False,gawk,5.3.2,,,,Valid: NVD affected range is GNU gawk <=5.4.0 and local 5.3.2 has no relevant patch.
-CVE-2022-3219,False,gnupg,2.4.9,,,,Valid: same GnuPG issue; Debian still marks 2.4.9 vulnerable and this derivation has no CVE patch.
-(CVE-2026-22816|CVE-2026-22865),False,gradle,8.14.4,,,,Valid: NVD describes Gradle native-platform issues fixed after local Gradle 8.14.4 and no local patch is present.
-CVE-2021-30499,False,libcaca,0.99.beta20,,,,Valid: NVD describes libcaca export_troff overflow and the local derivation only patches CVE-2026-42046.
-CVE-2026-35094,False,libinput,1.31.3,,,,Valid: NVD issue requires Lua plugin loading and this build has lua-plugins enabled with no relevant patch.
-CVE-2018-7263,False,libmad,0.15.1b,,,,Valid: NVD affected range includes libmad 0.15.1b and no CVE-2018-7263 patch is present.
-(CVE-2013-6393|CVE-2014-2525),False,libyaml,0.1.4,,,,Valid: NVD affected ranges cover LibYAML before 0.1.5 or 0.1.6 and local version is 0.1.4.
-(CVE-2026-1764|CVE-2026-1766|CVE-2026-1767),False,localsearch,3.11.1,,,,Valid: GNOME localsearch MP3 extractor needs vendor security patches and local derivation only carries the unrelated Landlock patch.
-CVE-2026-13757,False,p11-kit,0.26.2,,,,Valid: p11-kit fixed this in 0.26.3 or later and local 0.26.2 has no recursion-depth patch.
-CVE-2023-37769,False,pixman,0.46.4,,,,Valid: Debian and Ubuntu still mark pixman 0.46.4 vulnerable for this FPE issue and local derivation has no patch.
-CVE-2023-44709,False,plutosvg,0.0.8,,,,Valid: NVD affected commit is an ancestor of v0.0.8 and local patch is unrelated.
-(CVE-2025-15366|CVE-2026-0864|CVE-2026-11940|CVE-2026-11972|CVE-2026-1502|CVE-2026-3276|CVE-2026-4786|CVE-2026-5713|CVE-2026-6100|CVE-2026-7774|CVE-2026-8328|CVE-2026-9669),False,python,3.14.4,,,,Valid: NVD CPython affected range includes 3.14.4 and this derivation has no security backports.
-CVE-2025-66453,False,rhino,1.8.0,,,,Valid: NVD affected range is Rhino before 1.8.1 and local version is 1.8.0.
-(CVE-2025-8262|CVE-2025-9308),False,yarn,1.22.22,,,,Valid: NVD affected range includes Yarn 1.22.22 and the local derivation has no relevant patch.
+vuln_id,whitelist,package,version_local,version_local_regex,version_nixpkgs,version_upstream,comment,review_comment
+(CVE-2026-3441|CVE-2026-3442|CVE-2026-4647|CVE-2026-6844|CVE-2026-6845),False,binutils,,2\.46(\.0)?,,,,Valid: NVD describes GNU Binutils issues and local 2.46 source predates the 2.46.1 fixes.
+CVE-2024-58251,False,busybox,1.37.0,,,,,Valid: NVD affected range is BusyBox <=1.37.0 and local patches do not address this CVE.
+CVE-2024-47554,False,commons-io,,2\.11\.0\.(jar|pom),,,,Valid: NVD affected range is Apache Commons IO 2.0 to before 2.14.0 and this artifact is 2.11.0.
+CVE-2023-7216,False,cpio,2.15,,,,,Valid: NVD describes GNU cpio path traversal and the local 2.15 derivation has no relevant patch.
+CVE-2026-6507,False,dnsmasq,2.93,,,,,Valid: NVD describes dnsmasq BOOTREPLY handling and the local 2.93 derivation has no relevant patch.
+(CVE-2025-15276|CVE-2025-15277|CVE-2025-15278),False,fontforge,20251009,,,,,Valid: NVD affected commits are ancestors of tag 20251009 and Nixpkgs only patches adjacent CVEs 15269 15275 and 15279.
+(CVE-2026-40467|CVE-2026-40468|CVE-2026-40553),False,gawk,5.3.2,,,,,Valid: NVD affected range is GNU gawk <=5.4.0 and local 5.3.2 has no relevant patch.
+CVE-2022-3219,True,gnupg,2.4.9,,,,False positive: Nixpkgs GnuPG/FreePG patch set includes the compressed-signature rejection fix for CVE-2022-3219.
+(CVE-2026-22816|CVE-2026-22865),False,gradle,8.14.4,,,,,Valid: NVD describes Gradle native-platform issues fixed after local Gradle 8.14.4 and no local patch is present.
+CVE-2021-30499,False,libcaca,0.99.beta20,,,,,Valid: NVD describes libcaca export_troff overflow and the local derivation only patches CVE-2026-42046.
+CVE-2026-35094,False,libinput,1.31.3,,,,,Valid: NVD issue requires Lua plugin loading and this build has lua-plugins enabled with no relevant patch.
+CVE-2018-7263,False,libmad,0.15.1b,,,,,Valid: NVD affected range includes libmad 0.15.1b and no CVE-2018-7263 patch is present.
+(CVE-2013-6393|CVE-2014-2525),False,libyaml,0.1.4,,,,,Valid: NVD affected ranges cover LibYAML before 0.1.5 or 0.1.6 and local version is 0.1.4.
+(CVE-2026-1764|CVE-2026-1766|CVE-2026-1767),False,localsearch,3.11.1,,,,,Valid: GNOME localsearch MP3 extractor needs vendor security patches and local derivation only carries the unrelated Landlock patch.
+CVE-2026-13757,False,p11-kit,0.26.2,,,,,Valid: p11-kit fixed this in 0.26.3 or later and local 0.26.2 has no recursion-depth patch.
+CVE-2023-37769,True,pixman,0.46.4,,,,"False positive: CVE targets a pixman stress/test binary; the scanned pixman output contains the library and headers, not the vulnerable test binary."
+CVE-2023-44709,False,plutosvg,0.0.8,,,,,Valid: NVD affected commit is an ancestor of v0.0.8 and local patch is unrelated.
+(CVE-2025-15366|CVE-2026-0864|CVE-2026-11940|CVE-2026-11972|CVE-2026-1502|CVE-2026-3276|CVE-2026-4786|CVE-2026-5713|CVE-2026-6100|CVE-2026-7774|CVE-2026-8328|CVE-2026-9669),False,python,3.14.4,,,,,Valid: NVD CPython affected range includes 3.14.4 and this derivation has no security backports.
+CVE-2025-66453,False,rhino,1.8.0,,,,,Valid: NVD affected range is Rhino before 1.8.1 and local version is 1.8.0.
+(CVE-2025-8262|CVE-2025-9308),False,yarn,1.22.22,,,,,Valid: NVD affected range includes Yarn 1.22.22 and the local derivation has no relevant patch.
 CVE-2024-13278,True,Diff,1.0.2,,,,Incorrect package: NVD record affects the Drupal Diff module; scanned component is the Haskell Diff package.
 CVE-2021-28794,True,ShellCheck,0.11.0,,,,Incorrect package: NVD record affects an unofficial Visual Studio Code ShellCheck extension; scanned component is the ShellCheck CLI.
 CVE-2024-9410,True,ada,3.4.4,,,,Incorrect package: NVD record affects the Ada.cx Sentry service component; scanned component is the ada library.
@@ -508,7 +508,7 @@ CVE-2025-15282,True,python,2.7.18.12,,3.14.6,3.14.6,False positive: scanner tria
 CVE-2025-15366,True,python,2.7.18.12,,3.14.6,3.14.6,False positive: scanner triage classified the Nixpkgs package/version as not affected based on Repology/upstream package data.
 CVE-2025-15366,True,python,3.14.4,,3.14.6,3.14.6,False positive: scanner triage classified the Nixpkgs package/version as not affected based on Repology/upstream package data.
 CVE-2025-15367,True,python,2.7.18.12,,3.14.6,3.14.6,False positive: scanner triage classified the Nixpkgs package/version as not affected based on Repology/upstream package data.
-CVE-2025-15367,False,python,3.14.4,,3.14.6,3.14.6,Valid: CPython 3.14.4 source lacks the upstream poplib control-character validation fix.
+CVE-2025-15367,False,python,3.14.4,,3.14.6,3.14.6,,Valid: CPython 3.14.4 source lacks the upstream poplib control-character validation fix.
 CVE-2025-1795,True,python,2.7.18.12,,3.14.6,3.14.6,False positive: scanner triage classified the Nixpkgs package/version as not affected based on Repology/upstream package data.
 CVE-2025-4138,True,python,2.7.18.12,,3.14.6,3.14.6,False positive: scanner triage classified the Nixpkgs package/version as not affected based on Repology/upstream package data.
 CVE-2025-4330,True,python,2.7.18.12,,3.14.6,3.14.6,False positive: scanner triage classified the Nixpkgs package/version as not affected based on Repology/upstream package data.
@@ -542,7 +542,7 @@ CVE-2026-3276,True,python,3.14.4,,3.14.6,3.14.6,False positive: scanner triage c
 CVE-2026-3298,True,python,3.14.4,,3.14.6,3.14.6,Not applicable to this target: CVE is Windows-only or Windows install-layout specific; target host platform is x86_64-linux.
 CVE-2026-3446,True,python,2.7.18.12,,3.14.6,3.14.6,False positive: scanner triage classified the Nixpkgs package/version as not affected based on Repology/upstream package data.
 CVE-2026-3479,True,python,2.7.18.12,,3.14.6,3.14.6,Not a real target vulnerability: CVE record is disputed and states there is no vulnerability under the intended security model.
-CVE-2026-4360,False,python,3.14.4,,3.14.6,3.14.6,Valid: CPython 3.14.4 source lacks the TarFile.extract filter_function propagation fix.
+CVE-2026-4360,False,python,3.14.4,,3.14.6,3.14.6,,Valid: CPython 3.14.4 source lacks the TarFile.extract filter_function propagation fix.
 CVE-2026-4786,True,python,2.7.18.12,,3.14.6,3.14.6,False positive: scanner triage classified the Nixpkgs package/version as not affected based on Repology/upstream package data.
 CVE-2026-4786,True,python,3.14.4,,3.14.6,3.14.6,False positive: scanner triage classified the Nixpkgs package/version as not affected based on Repology/upstream package data.
 CVE-2026-5713,True,python,3.14.4,,3.14.6,3.14.6,False positive: scanner triage classified the Nixpkgs package/version as not affected based on Repology/upstream package data.
