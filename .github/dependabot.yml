@@ -12,7 +12,9 @@ updates:
   - package-ecosystem: nix
     directory: /
     schedule:
-      interval: weekly
+      interval: daily
+    cooldown:
+      default-days: 0
     groups:
       nix-flake-inputs:
         patterns:
