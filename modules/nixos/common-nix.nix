@@ -13,11 +13,9 @@ in
   boot.blacklistedKernelModules = [ "pcspkr" ];
   hardware.enableAllFirmware = true;
   nixpkgs.config.allowUnfree = true;
-  services.journald = {
-    storage = "persistent";
-    extraConfig = ''
-      SystemMaxUse=1G
-    '';
+  services.journald.settings.Journal = {
+    Storage = "persistent";
+    SystemMaxUse = "1G";
   };
 
   nix = {
