@@ -28,8 +28,11 @@ jobs:
 
       - name: Install nix
         uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
+        # Multi-user (daemon) install: the VM test mounts the host store over
+        # virtiofs, which only maps unmapped (root-owned) store files to root in
+        # the guest. A single-user store owned by the runner breaks services
+        # that require root-owned config, such as auditd.
         with:
-          install_options: --no-daemon
           extra_nix_config: |
             extra-trusted-substituters = http://127.0.0.1
             experimental-features = nix-command flakes
