@@ -63,14 +63,12 @@ forAllSystems (
                           nix-store = {
                             source = builtins.storeDir;
                             target = "/nix/.ro-store";
-                            securityModel = "none";
                           };
                           # Keep only bootstrap auth as a transient host share.
                           auth-bootstrap = {
                             # One-way bootstrap source prepared by run-vm.sh.
                             source = ''"''${AUTH_VM_BOOTSTRAP_DIR:-$TMPDIR/xchg}"'';
                             target = "/mnt/auth-bootstrap";
-                            securityModel = "none";
                           };
                         }
                       else
