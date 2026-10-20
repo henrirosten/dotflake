@@ -29,6 +29,13 @@ in
     };
   };
 
+  # Skip decryption instead of failing Home Manager activation on hosts
+  # that have not been provisioned with the VPN secrets.
+  systemd.user.services.sops-nix.Unit.ConditionPathExists = [
+    "${config.xdg.configHome}/dotflake/secrets/vpn.yaml"
+    config.sops.age.keyFile
+  ];
+
   home.packages = [
     pkgs.age
     pkgs.openvpn
