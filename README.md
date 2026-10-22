@@ -14,6 +14,9 @@ Nix flake repository for:
 | `nocturn` | Headless server (Ryzen 9 5950X, 64 GB RAM) |
 | `generic` | VM-focused profile used for local and CI testing |
 
+All hosts use `pkgs.linuxPackages_latest` from the locked nixpkgs input. Updating
+that input advances the kernel along with the other system packages.
+
 ## Quick Start
 
 ```bash

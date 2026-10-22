@@ -16,6 +16,8 @@
     inputs.self.rev or inputs.self.dirtyRev or inputs.self.lastModified or "unknown"
   );
 
+  boot.kernelPackages = pkgs.linuxPackages_latest;
+
   boot.loader = {
     systemd-boot.enable = lib.mkDefault true;
     systemd-boot.configurationLimit = lib.mkDefault 5;
