@@ -133,7 +133,7 @@ Environment overrides:
 - `VM_HOST_SHARE_DIRS` (same effect as repeating `--share-dir`, colon-separated; shared paths must not contain `:`)
 - `CODEX_HOST_AUTH_FILE` (default: `$HOME/.codex/auth.json`)
 - `CLAUDE_HOST_AUTH_FILE` (default: `$HOME/.claude/.credentials.json`)
-- `COPILOT_HOST_AUTH_FILE` (file containing a GitHub token for Copilot CLI; default: `COPILOT_GITHUB_TOKEN`, then the `copilot-cli` keyring entry). The token is exported as `COPILOT_GITHUB_TOKEN` in `generic-vm` shells. Use a fine-grained PAT with only the **Copilot Requests** permission to limit what the VM can access.
+- `COPILOT_HOST_AUTH_FILE` (file containing a GitHub token for Copilot CLI; default: `COPILOT_GITHUB_TOKEN`, then the `copilot-cli` keyring entry). The token is exported as `COPILOT_GITHUB_TOKEN` in `generic-vm` shells. Use a fine-grained PAT with only the **Copilot Requests** permission to limit what the VM can access. To store it as the keyring entry: `nix shell nixpkgs#libsecret -c secret-tool store --label='Copilot CLI' service copilot-cli`.
 - `COPILOT_HOST_USE_GH_TOKEN` (set to `1` to fall back to `GH_TOKEN`, `GITHUB_TOKEN`, then `gh auth token` when no Copilot-specific token is found; these usually carry broader scopes, such as `repo`, so they are not passed to the VM by default)
 
 ### Run Graphical Apps On `generic-vm` Over SSH

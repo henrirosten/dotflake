@@ -310,6 +310,8 @@ if [ "$bootstrap_auth" -eq 1 ]; then
   copilot_token="${copilot_token//[[:space:]]/}"
   if [ -n "$copilot_token" ]; then
     printf '%s\n' "$copilot_token" >"$auth_bootstrap_dir/copilot-github-token"
+  else
+    echo "Note: no Copilot CLI token found, Copilot in the VM will not be logged in (see COPILOT_HOST_AUTH_FILE in --help)" >&2
   fi
   unset copilot_token
   if [ -n "$guest_exec" ]; then
