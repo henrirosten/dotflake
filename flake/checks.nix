@@ -31,7 +31,7 @@ forAllSystems (
       # Avoid colliding with runNixOSTest's implicit single-node `machine`
       # alias when nixpkgs type-checks the generated Python test script.
       nodes.x1 =
-        { lib, ... }:
+        { lib, pkgs, ... }:
         {
           imports = [ ../hosts/x1/configuration.nix ];
           services.getty.autologinUser = lib.mkForce "root";
@@ -40,6 +40,7 @@ forAllSystems (
           environment.systemPackages = lib.mkAfter [
             inputs.codex-cli-nix.packages.${system}.default
             inputs.nix-claude-code.packages.${system}.default
+            pkgs.github-copilot-cli
           ];
         };
       testScript = ''
@@ -51,6 +52,8 @@ forAllSystems (
         x1.succeed("codex --help >/dev/null 2>&1 || codex-cli --help >/dev/null 2>&1")
         x1.succeed("command -v claude")
         x1.succeed("claude --version")
+        x1.succeed("command -v copilot")
+        x1.succeed("copilot --version")
       '';
     };
   }

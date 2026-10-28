@@ -36,6 +36,7 @@ in
       dig.dnsutils
       file
       gh
+      github-copilot-cli
       htop
       jq
       net-tools
