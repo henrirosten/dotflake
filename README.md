@@ -120,6 +120,13 @@ nix run .#generic-vm -- --share-dir ~/.config --share-dir ~/src/dotflake
 With one shared directory, it is mounted at `/mnt/host-share`. With multiple shared directories, they are mounted under `/mnt/host-share/<name>`. The autologin shell still starts in the user's home directory and prints the mounted share paths.
 Shared paths must not contain `:`, commas, or whitespace.
 
+Run a command on the `generic-vm` console right after autologin:
+```bash
+nix run .#generic-vm -- --share-dir "$PWD" --exec 'cd /mnt/host-share && copilot --no-mouse'
+```
+The command runs once in the console login shell; when it exits you are back at the shell (append `; sudo poweroff` to shut the VM down instead). The host terminal size and `TERM` are applied before it starts, but later host terminal resizes do not reach the guest.
+Copilot's own copy reaches the host only through OSC 52 escape sequences, which some terminals, such as GNOME Terminal (VTE), ignore. `--no-mouse` leaves selection to the host terminal, so its own copy and paste (Ctrl+Shift+C / Ctrl+Shift+V) work.
+
 Environment overrides:
 - `NIX_DISK_IMAGE` (default: `./<vm-name>.qcow2`)
 - `VM_HOST_SHARE_DIR` (same effect as `--share-dir`)

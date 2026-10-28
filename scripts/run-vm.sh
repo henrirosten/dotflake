@@ -12,6 +12,7 @@ host_copilot_auth_file="${COPILOT_HOST_AUTH_FILE:-}"
 host_copilot_use_gh_token="${COPILOT_HOST_USE_GH_TOKEN:-0}"
 host_share_dir="${VM_HOST_SHARE_DIR:-}"
 host_share_dirs_env="${VM_HOST_SHARE_DIRS:-}"
+guest_exec=""
 declare -a host_share_dirs=()
 declare -a host_share_names=()
 managed_auth_bootstrap_dir=0
@@ -145,6 +146,17 @@ while [ "$#" -gt 0 ]; do
     host_share_dirs+=("$2")
     shift 2
     ;;
+  --exec)
+    # Reject a following option so `--exec --keep-disk` is not taken as the command.
+    case "${2:-}" in
+    "" | -*)
+      echo "--exec requires a command" >&2
+      exit 2
+      ;;
+    esac
+    guest_exec="$2"
+    shift 2
+    ;;
   --ram-mb)
     ram_mb="$2"
     override_ram=1
@@ -171,6 +183,8 @@ Options:
   --disk-size SIZE   Disk size (e.g. 8G, 16384M; default: @defaultDiskSize@)
   --disk-image PATH  Disk image path (default: @defaultDiskImage@)
   --share-dir PATH   Share host directory with the guest (repeatable)
+  --exec CMD         Run CMD once in the console login shell after boot
+                     (generic-vm only)
 
 Environment:
   NIX_DISK_IMAGE     Override disk image path (default: @defaultDiskImage@)
@@ -196,6 +210,12 @@ EOF
     ;;
   esac
 done
+
+# The command reaches the guest through the auth bootstrap share.
+if [ -n "$guest_exec" ] && [ "$bootstrap_auth" -ne 1 ]; then
+  echo "--exec is only supported on generic-vm" >&2
+  exit 2
+fi
 
 if command -v ssh-keygen >/dev/null 2>&1; then
   # All VM apps currently forward guest SSH to host 127.0.0.1:2222.
@@ -292,6 +312,14 @@ if [ "$bootstrap_auth" -eq 1 ]; then
     printf '%s\n' "$copilot_token" >"$auth_bootstrap_dir/copilot-github-token"
   fi
   unset copilot_token
+  if [ -n "$guest_exec" ]; then
+    # Line 1: host terminal rows and columns, line 2: TERM, rest: the command.
+    {
+      stty size 2>/dev/null </dev/tty || echo
+      printf '%s\n' "${TERM:-}"
+      printf '%s\n' "$guest_exec"
+    } >"$auth_bootstrap_dir/exec-command"
+  fi
 fi
 if [ "$bootstrap_auth" -eq 1 ] && [ -n "$auth_bootstrap_dir" ]; then
   export AUTH_VM_BOOTSTRAP_DIR="$auth_bootstrap_dir"

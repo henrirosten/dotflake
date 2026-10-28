@@ -274,11 +274,35 @@ forAllSystems (
                     export COPILOT_GITHUB_TOKEN
                   fi
                 '';
+                # Run the command passed with `--exec` once, on the serial console only.
+                home-manager.users.${username}.programs.bash.initExtra = lib.mkAfter ''
+                  if [ -z "''${SSH_CONNECTION:-}" ] && [ -f /run/vm-exec/command ] && [ "$(tty 2>/dev/null)" = /dev/ttyS0 ]; then
+                    {
+                      read -r vm_exec_rows vm_exec_cols
+                      IFS= read -r vm_exec_term
+                      vm_exec_command="$(cat)"
+                    } </run/vm-exec/command
+                    rm -f /run/vm-exec/command
+                    if [ -n "$vm_exec_cols" ]; then
+                      stty rows "$vm_exec_rows" cols "$vm_exec_cols" 2>/dev/null || true
+                    fi
+                    if [ -n "$vm_exec_term" ] && infocmp "$vm_exec_term" >/dev/null 2>&1; then
+                      export TERM="$vm_exec_term"
+                    fi
+                    eval "$vm_exec_command"
+                    unset vm_exec_rows vm_exec_cols vm_exec_term vm_exec_command
+                  fi
+                '';
                 systemd.services.auth-bootstrap = {
                   description = "Copy auth credentials from bootstrap share";
                   after = [ "local-fs.target" ];
                   wants = [ "local-fs.target" ];
-                  before = [ "getty.target" ];
+                  # Finish before the console autologin so credentials and the --exec command
+                  # are in place. This does not order SSH logins.
+                  before = [
+                    "getty.target"
+                    "systemd-user-sessions.service"
+                  ];
                   wantedBy = [ "multi-user.target" ];
                   serviceConfig.Type = "oneshot";
                   script = ''
@@ -326,6 +350,16 @@ forAllSystems (
                     else
                       # Drop a token left on a kept disk so host-side removal takes effect.
                       ${pkgs.coreutils}/bin/rm -f ${homeDir}/.copilot/vm-github-token
+                    fi
+
+                    # One-shot console command from --exec (run by bash initExtra).
+                    # /run is tmpfs, so the command never survives on a kept disk.
+                    if [ -f /mnt/auth-bootstrap/exec-command ]; then
+                      ${pkgs.coreutils}/bin/install -d -m 0700 /run/vm-exec
+                      ${pkgs.coreutils}/bin/install -m 0600 \
+                        /mnt/auth-bootstrap/exec-command \
+                        /run/vm-exec/command
+                      ${pkgs.coreutils}/bin/chown ${username}:"$user_group" /run/vm-exec /run/vm-exec/command
                     fi
 
                     # Drop live host mount after bootstrap to reduce host interaction surface.
