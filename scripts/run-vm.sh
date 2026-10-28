@@ -8,6 +8,8 @@ disk_size="@defaultDiskSize@"
 disk_image="${NIX_DISK_IMAGE:-@defaultDiskImage@}"
 host_codex_auth_file="${CODEX_HOST_AUTH_FILE:-$HOME/.codex/auth.json}"
 host_claude_auth_file="${CLAUDE_HOST_AUTH_FILE:-$HOME/.claude/.credentials.json}"
+host_copilot_auth_file="${COPILOT_HOST_AUTH_FILE:-}"
+host_copilot_use_gh_token="${COPILOT_HOST_USE_GH_TOKEN:-0}"
 host_share_dir="${VM_HOST_SHARE_DIR:-}"
 host_share_dirs_env="${VM_HOST_SHARE_DIRS:-}"
 declare -a host_share_dirs=()
@@ -98,23 +100,32 @@ validate_share_dir() {
   printf '%s\n' "$dir"
 }
 
-if [ "$bootstrap_auth" -eq 1 ]; then
-  auth_bootstrap_dir="$(@mktemp@ -d -t @vmName@-auth-bootstrap.XXXXXX)"
-  managed_auth_bootstrap_dir=1
-  if [ -f "$host_codex_auth_file" ]; then
-    install -m 600 -- "$host_codex_auth_file" "$auth_bootstrap_dir/codex-auth.json"
+# Use Copilot-specific credentials unless an explicit token file is given.
+# General GitHub tokens (GH_TOKEN, GITHUB_TOKEN, gh auth token) usually carry
+# broader scopes, so they are only used when explicitly allowed.
+resolve_copilot_token() {
+  if [ -n "$host_copilot_auth_file" ]; then
+    if [ -f "$host_copilot_auth_file" ]; then
+      cat -- "$host_copilot_auth_file"
+    else
+      echo "COPILOT_HOST_AUTH_FILE does not exist: $host_copilot_auth_file" >&2
+    fi
+    return 0
   fi
-  if [ -f "$host_claude_auth_file" ]; then
-    install -m 600 -- "$host_claude_auth_file" "$auth_bootstrap_dir/claude-credentials.json"
+  if [ -n "${COPILOT_GITHUB_TOKEN:-}" ]; then
+    printf '%s\n' "$COPILOT_GITHUB_TOKEN"
+  elif @secretTool@ lookup service copilot-cli 2>/dev/null; then
+    :
+  elif [ "$host_copilot_use_gh_token" != "1" ]; then
+    :
+  elif [ -n "${GH_TOKEN:-}" ]; then
+    printf '%s\n' "$GH_TOKEN"
+  elif [ -n "${GITHUB_TOKEN:-}" ]; then
+    printf '%s\n' "$GITHUB_TOKEN"
+  elif command -v gh >/dev/null 2>&1; then
+    gh auth token 2>/dev/null || true
   fi
-  host_claude_settings="${CLAUDE_HOST_SETTINGS_FILE:-$HOME/.claude/settings.json}"
-  if [ -f "$host_claude_settings" ]; then
-    install -m 600 -- "$host_claude_settings" "$auth_bootstrap_dir/claude-settings.json"
-  fi
-fi
-if [ "$bootstrap_auth" -eq 1 ] && [ -n "$auth_bootstrap_dir" ]; then
-  export AUTH_VM_BOOTSTRAP_DIR="$auth_bootstrap_dir"
-fi
+}
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -167,6 +178,10 @@ Environment:
   VM_HOST_SHARE_DIRS Host directories shared to guest, colon-separated
   CODEX_HOST_AUTH_FILE   Host Codex auth file for one-way VM bootstrap (default: $HOME/.codex/auth.json)
   CLAUDE_HOST_AUTH_FILE  Host Claude auth file for one-way VM bootstrap (default: $HOME/.claude/.credentials)
+  COPILOT_HOST_AUTH_FILE Host file containing a GitHub token for Copilot CLI VM bootstrap
+                         (default: COPILOT_GITHUB_TOKEN, then the copilot-cli keyring entry)
+  COPILOT_HOST_USE_GH_TOKEN  Set to 1 to fall back to GH_TOKEN, GITHUB_TOKEN, or `gh auth token`
+                         (broader scopes than Copilot needs)
 
 Shared paths must not contain ':', commas, or whitespace.
 EOF
@@ -194,7 +209,7 @@ if [ "${#host_share_dirs[@]}" -gt 0 ]; then
   declare -a validated_share_dirs=()
   for host_share_dir in "${host_share_dirs[@]}"; do
     [ -n "$host_share_dir" ] || continue
-    host_share_dir="$(validate_share_dir "$host_share_dir")"
+    host_share_dir="$(validate_share_dir "$host_share_dir")" || exit 2
     validated_share_dirs+=("$host_share_dir")
   done
   host_share_dirs=("${validated_share_dirs[@]}")
@@ -241,7 +256,7 @@ fi
 cleanup() {
   status="$?"
   if [ "$managed_auth_bootstrap_dir" -eq 1 ] && [ -n "$auth_bootstrap_dir" ]; then
-    for f in "$auth_bootstrap_dir"/codex-auth.json "$auth_bootstrap_dir"/claude-credentials.json "$auth_bootstrap_dir"/claude-settings.json; do
+    for f in "$auth_bootstrap_dir"/codex-auth.json "$auth_bootstrap_dir"/claude-credentials.json "$auth_bootstrap_dir"/claude-settings.json "$auth_bootstrap_dir"/copilot-github-token; do
       if [ -f "$f" ]; then
         shred -u -- "$f" 2>/dev/null || rm -f -- "$f"
       fi
@@ -255,5 +270,31 @@ cleanup() {
 }
 
 trap cleanup EXIT INT TERM
+
+# Collect credentials only after the cleanup trap is in place so early exits
+# (for example --help or invalid options) never leave copies on disk.
+if [ "$bootstrap_auth" -eq 1 ]; then
+  auth_bootstrap_dir="$(@mktemp@ -d -t @vmName@-auth-bootstrap.XXXXXX)"
+  managed_auth_bootstrap_dir=1
+  if [ -f "$host_codex_auth_file" ]; then
+    install -m 600 -- "$host_codex_auth_file" "$auth_bootstrap_dir/codex-auth.json"
+  fi
+  if [ -f "$host_claude_auth_file" ]; then
+    install -m 600 -- "$host_claude_auth_file" "$auth_bootstrap_dir/claude-credentials.json"
+  fi
+  host_claude_settings="${CLAUDE_HOST_SETTINGS_FILE:-$HOME/.claude/settings.json}"
+  if [ -f "$host_claude_settings" ]; then
+    install -m 600 -- "$host_claude_settings" "$auth_bootstrap_dir/claude-settings.json"
+  fi
+  copilot_token="$(resolve_copilot_token)"
+  copilot_token="${copilot_token//[[:space:]]/}"
+  if [ -n "$copilot_token" ]; then
+    printf '%s\n' "$copilot_token" >"$auth_bootstrap_dir/copilot-github-token"
+  fi
+  unset copilot_token
+fi
+if [ "$bootstrap_auth" -eq 1 ] && [ -n "$auth_bootstrap_dir" ]; then
+  export AUTH_VM_BOOTSTRAP_DIR="$auth_bootstrap_dir"
+fi
 
 "@vmRunner@" "$@"

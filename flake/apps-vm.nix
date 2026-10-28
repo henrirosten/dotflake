@@ -268,6 +268,12 @@ forAllSystems (
                   "nodev"
                   "noexec"
                 ];
+                environment.shellInit = lib.mkAfter ''
+                  if [ -z "''${COPILOT_GITHUB_TOKEN:-}" ] && [ -r "$HOME/.copilot/vm-github-token" ]; then
+                    COPILOT_GITHUB_TOKEN="$(${pkgs.coreutils}/bin/cat "$HOME/.copilot/vm-github-token")"
+                    export COPILOT_GITHUB_TOKEN
+                  fi
+                '';
                 systemd.services.auth-bootstrap = {
                   description = "Copy auth credentials from bootstrap share";
                   after = [ "local-fs.target" ];
@@ -309,6 +315,19 @@ forAllSystems (
                       ${pkgs.coreutils}/bin/rm -f /mnt/auth-bootstrap/claude-credentials.json /mnt/auth-bootstrap/claude-settings.json || true
                     fi
 
+                    # Copilot CLI auth (exported as COPILOT_GITHUB_TOKEN by shellInit)
+                    if [ -f /mnt/auth-bootstrap/copilot-github-token ]; then
+                      ${pkgs.coreutils}/bin/install -d -m 0700 ${homeDir}/.copilot
+                      ${pkgs.coreutils}/bin/install -m 0600 \
+                        /mnt/auth-bootstrap/copilot-github-token \
+                        ${homeDir}/.copilot/vm-github-token
+                      ${pkgs.coreutils}/bin/chown ${username}:"$user_group" ${homeDir}/.copilot ${homeDir}/.copilot/vm-github-token
+                      ${pkgs.coreutils}/bin/rm -f /mnt/auth-bootstrap/copilot-github-token || true
+                    else
+                      # Drop a token left on a kept disk so host-side removal takes effect.
+                      ${pkgs.coreutils}/bin/rm -f ${homeDir}/.copilot/vm-github-token
+                    fi
+
                     # Drop live host mount after bootstrap to reduce host interaction surface.
                     if ${pkgs.util-linux}/bin/mountpoint -q /mnt/auth-bootstrap; then
                       ${pkgs.util-linux}/bin/umount /mnt/auth-bootstrap || true
@@ -335,6 +354,7 @@ forAllSystems (
           defaultCleanupDisk = "1";
           bootstrapAuth = if isGeneric then "1" else "0";
           mktemp = "${pkgs.coreutils}/bin/mktemp";
+          secretTool = "${pkgs.libsecret}/bin/secret-tool";
           qemuImg = "${pkgs.qemu}/bin/qemu-img";
           mkfsExt4 = "${pkgs.e2fsprogs}/bin/mkfs.ext4";
           inherit vmRunner;
