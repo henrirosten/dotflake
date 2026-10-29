@@ -16,10 +16,12 @@ forAllSystems (
   in
   {
     dotflake-agent = pkgs.runCommand "dotflake-agent" { } ''
-      mkdir -p "$out/bin"
+      mkdir -p "$out/bin" "$out/lib"
+      cp ${../scripts/agent-state.py} "$out/lib/dotflake_agent_state.py"
       substitute ${../scripts/dotflake-agent.py} "$out/bin/dotflake-agent" \
         --replace-fail '#!/usr/bin/env python3' '#!${pkgs.python3}/bin/python3' \
         --replace-fail '@git@' '${pkgs.git}/bin/git' \
+        --replace-fail '@modulePath@' "$out/lib" \
         --replace-fail '@runtimePath@' '${pkgs.lib.makeBinPath hostTools}'
       chmod +x "$out/bin/dotflake-agent"
     '';

@@ -9,10 +9,14 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import stat
 import subprocess
 import sys
 import tempfile
+
+sys.path.insert(0, "@modulePath@")
+from dotflake_agent_state import instance_lock, instance_running, state_root
 
 
 GIT = "@git@"
@@ -45,7 +49,7 @@ class Git:
     def __init__(self, home):
         self.env = git_environment(home)
 
-    def run(self, cwd, *args, check=True):
+    def run(self, cwd, *args, check=True, input=None):
         result = subprocess.run(
             [GIT, "--no-pager", "--no-optional-locks",
              "-c", "core.hooksPath=/dev/null",
@@ -54,7 +58,7 @@ class Git:
              "-c", "core.fsmonitor=false",
              "-c", "core.attributesFile=/dev/null",
              "-c", "fetch.fsckObjects=true", *args],
-            cwd=cwd, env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            cwd=cwd, env=self.env, input=input, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         )
         if check and result.returncode:
             raise AgentError(result.stderr.decode(errors="replace").strip()
@@ -66,7 +70,7 @@ class Git:
 
 
 class Project:
-    def __init__(self, git, path, instance):
+    def __init__(self, git, path, instance, create_instance=True):
         self.git = git
         path = Path(path).resolve()
         if not path.is_dir() or git.run(path, "rev-parse", "--git-dir", check=False).returncode:
@@ -94,6 +98,7 @@ class Project:
         head = git.run(self.path, "rev-parse", "--verify", "HEAD^{commit}", check=False)
         if head.returncode:
             raise AgentError("unborn HEAD is not supported; commit before exchanging work")
+        self.head = head.stdout.decode().strip()
         if git.text(self.path, "rev-parse", "--show-object-format") != "sha1":
             raise AgentError("only SHA-1 repositories are supported")
         # The main repository, shared by all worktrees; bare repositories have no .git.
@@ -101,14 +106,15 @@ class Project:
         # QEMU reads commas in paths as option separators; the hash keeps IDs unique.
         basename = re.sub(r"[^A-Za-z0-9._-]", "_", self.repo.name.removesuffix(".git"))
         short_hash = hashlib.sha256(os.fsencode(self.common)).hexdigest()[:12]
-        state = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state")
-        root = state / "dotflake/agents"
+        root = state_root()
         self.state = root / f"{basename}-{short_hash}"
         self.instance = instance
         self.inbox = self.state / "instances" / instance / "inbox"
         self.outbox = self.state / "instances" / instance / "outbox"
-        for directory in (root.parent, root, self.state, self.state / "locks",
-                          self.state / "instances", self.inbox.parent, self.inbox, self.outbox):
+        directories = (root.parent, root, self.state, self.state / "locks", self.state / "instances")
+        if create_instance:
+            directories += (self.inbox.parent, self.inbox, self.outbox)
+        for directory in directories:
             directory.mkdir(mode=0o700, parents=True, exist_ok=True)
             if directory.is_symlink():
                 raise AgentError(f"state directory is a symlink: {directory}")
@@ -265,6 +271,175 @@ def import_bundle(project, max_bytes):
             print(f"{ref} {old.get(ref, '-')} -> {new.get(ref, '-')}")
 
 
+def escaped(data, filename=False):
+    """Keep text readable while making terminal controls and bad UTF-8 visible."""
+    result = []
+    for character in data.decode("utf-8", errors="surrogateescape"):
+        code = ord(character)
+        if 0xDC80 <= code <= 0xDCFF:
+            result.append(f"\\x{code - 0xDC00:02x}")
+        elif (code < 32 and (filename or character not in "\n\t")) or code == 0x7F:
+            result.append(f"\\x{code:02x}")
+        elif 0x80 <= code <= 0x9F or 0x202A <= code <= 0x202E or 0x2066 <= code <= 0x2069:
+            # Unicode controls must stay distinct from invalid single-byte UTF-8.
+            result.append(f"\\u{{{code:04x}}}")
+        elif character == "\\" or (filename and character == '"'):
+            result.append("\\" + character)
+        else:
+            result.append(character)
+    text = "".join(result)
+    return f'"{text}"' if filename else text
+
+
+def changed_paths(git, repository, options, base, target):
+    raw = git.run(repository, *options, "diff", "--raw", "-z", "--no-abbrev",
+                  "--no-renames", "--no-ext-diff", "--no-textconv", "--color=never",
+                  base, target, "--").stdout.split(b"\0")
+    changes = []
+    for metadata, path in zip(raw[0:-1:2], raw[1:-1:2]):
+        old_mode, new_mode, old_oid, new_oid, status = metadata[1:].decode("ascii").split()
+        changes.append((path, status, old_mode, new_mode, old_oid, new_oid))
+    numstat = git.run(repository, *options, "diff", "--numstat", "-z", "--no-renames",
+                      "--no-ext-diff", "--no-textconv", "--color=never", base, target, "--").stdout
+    binary = set()
+    for entry in numstat.split(b"\0"):
+        if entry:
+            added, removed, path = entry.split(b"\t", 2)
+            if added == removed == b"-":
+                binary.add(path)
+    return changes, binary
+
+
+def highlight_reasons(git, repository, change):
+    path, _, old_mode, new_mode, old_oid, new_oid = change
+    basename = path.rsplit(b"/", 1)[-1]
+    reasons = []
+    if basename == b".gitattributes":
+        reasons.append("attributes")
+    if basename in (b".envrc", b"flake.nix", b"flake.lock") or path in (b".gitmodules", b".pre-commit-config.yaml") or path.startswith(
+        (b".github/", b"lefthook", b".husky/", b".vscode/", b".idea/")
+    ):
+        reasons.append("configuration")
+    if new_mode == "100755" and old_mode != "100755":
+        reasons.append("new executable")
+    if "120000" in (old_mode, new_mode):
+        reasons.append("symlink")
+    if "160000" in (old_mode, new_mode):
+        reasons.append("gitlink")
+    for mode, oid in ((old_mode, old_oid), (new_mode, new_oid)):
+        if mode in ("100644", "100755"):
+            content = git.run(repository, "cat-file", "blob", oid).stdout
+            if content.startswith(b"version https://git-lfs.github.com/spec/v1\n"):
+                reasons.append("Git LFS pointer")
+                break
+    return reasons
+
+
+def review(project, ref):
+    prefix = f"refs/remotes/vm-{project.instance}/"
+    ref = ref if ref.startswith("refs/") else prefix + ref
+    if not ref.startswith(prefix):
+        raise AgentError(f"review ref must be inside {prefix}")
+    git = project.git
+    if "\0" in ref or git.run(project.path, "check-ref-format", ref, check=False).returncode:
+        raise AgentError("invalid review ref name")
+    resolved = git.run(project.path, "rev-parse", "--verify", f"{ref}^{{commit}}", check=False)
+    if resolved.returncode:
+        raise AgentError(f"review ref does not name a commit: {escaped(os.fsencode(ref), filename=True)}")
+    target = resolved.stdout.decode().strip()
+    head = project.head
+    objects = Path(git.text(project.path, "rev-parse", "--path-format=absolute", "--git-path", "objects")).resolve()
+    with tempfile.TemporaryDirectory(prefix="dotflake-review-") as temporary:
+        repository = Path(temporary) / "review.git"
+        git.run(temporary, "init", "--bare", "--template=", str(repository))
+        # Write the empty tree locally before enabling the read-only alternate.
+        empty = git.run(repository, "mktree", input=b"").stdout.decode().strip()
+        (repository / "objects/info/alternates").write_bytes(os.fsencode(objects) + b"\n")
+        (repository / "info").mkdir()
+        (repository / "info/attributes").write_text("* !diff -text -eol -filter -ident -working-tree-encoding\n")
+        options = [f"--attr-source={empty}", "-c", "core.quotePath=true"]
+        merged = git.run(repository, "merge-base", head, target, check=False)
+        if merged.returncode == 1:
+            raise AgentError("host HEAD and review target have unrelated histories (no merge base)")
+        if merged.returncode:
+            raise AgentError(merged.stderr.decode(errors="replace").strip())
+        base = merged.stdout.decode().strip()
+        print(f"Host HEAD: {head}\nTarget: {target}\nMerge base: {base}")
+        print("\nLog")
+        log = git.run(repository, *options, "log", "--format=medium", "--encoding=none", "--no-decorate",
+                      "--no-ext-diff", "--no-textconv", "--color=never", f"{base}..{target}", "--").stdout
+        print(escaped(log), end="")
+        changes, binary = changed_paths(git, repository, options, base, target)
+        print("\nChanged paths (status, old mode -> new mode)")
+        for path, status, old_mode, new_mode, _, _ in changes:
+            print(f"  {status} {old_mode} -> {new_mode} {escaped(path, filename=True)}")
+        print("\nRuns on the host after merge")
+        highlights = [(change[0], highlight_reasons(git, repository, change)) for change in changes]
+        for path, reasons in highlights:
+            if reasons:
+                print(f"  {escaped(path, filename=True)}: {', '.join(reasons)}")
+        if not any(reasons for _, reasons in highlights):
+            print("  (none)")
+        print("\nNot reviewed (binary)")
+        for path in sorted(binary):
+            print(f"  {escaped(path, filename=True)}: not reviewed")
+        if not binary:
+            print("  (none)")
+        print("\nDiff")
+        patch = git.run(repository, *options, "diff", "--patch", "--full-index", "--no-renames",
+                        "--no-ext-diff", "--no-textconv", "--color=never", "--submodule=short",
+                        base, target, "--").stdout
+        print(escaped(patch), end="")
+        print(f"\nTo merge exactly this reviewed commit: git merge {target}")
+
+
+def list_projects():
+    root = state_root()
+    if not root.exists():
+        print("No agent projects.")
+        return
+    for project in sorted(root.iterdir()):
+        if not project.is_dir() or not (project / "project-path").exists():
+            continue
+        path = (project / "project-path").read_bytes().rstrip(b"\n")
+        print(f"Project {project.name}: {escaped(path, filename=True)}")
+        instances = project / "instances"
+        for instance in sorted(instances.iterdir()):
+            running = "running" if instance_running(project, instance.name) else "stopped"
+            print(f"  {instance.name}: {running}")
+
+
+def discard(project, remove_refs, yes):
+    with project.locked():
+        try:
+            with instance_lock(project.state, project.instance):
+                directory = project.inbox.parent
+                if not directory.exists():
+                    raise AgentError(f"instance does not exist: {project.instance}")
+                if not yes:
+                    if not sys.stdin.isatty():
+                        raise AgentError("discard requires --yes when stdin is not a terminal")
+                    try:
+                        answer = input(f"Type {project.instance} to discard this instance: ")
+                    except EOFError:
+                        raise AgentError("discard cancelled: no confirmation") from None
+                    if answer != project.instance:
+                        raise AgentError("discard cancelled: instance name did not match")
+                if remove_refs:
+                    prefix = f"refs/remotes/vm-{project.instance}/"
+                    refs = {ref: oid for ref, oid in project.refs().items() if ref.startswith(prefix)}
+                    if refs:
+                        transaction = "start\n" + "".join(f"delete {ref} {oid}\n" for ref, oid in refs.items())
+                        transaction += "prepare\ncommit\n"
+                        project.git.run(project.path, "update-ref", "--no-deref", "--stdin",
+                                        input=os.fsencode(transaction))
+                # shutil.rmtree uses directory descriptors and never follows child symlinks.
+                shutil.rmtree(directory)
+                print(f"Discarded {project.instance}")
+        except BlockingIOError:
+            raise AgentError(f"instance is running: {project.instance}") from None
+
+
 def instance_name(value):
     if not re.fullmatch(r"[a-z][a-z0-9-]{0,31}", value):
         raise argparse.ArgumentTypeError("instance must match [a-z][a-z0-9-]{0,31}")
@@ -289,6 +464,12 @@ def main():
     import_parser = subcommands.add_parser("import", help="validate and import an agent export")
     import_parser.add_argument("--max-bytes", type=positive_integer, default=512 * 1024 * 1024,
                                help="maximum bundle bytes (default: 536870912)")
+    review_parser = subcommands.add_parser("review", help="show the exact commits and changes to review")
+    review_parser.add_argument("ref", nargs="?", default="wip", help="wip, heads/<branch>, or a full instance ref")
+    subcommands.add_parser("list", help="list all projects and instances")
+    discard_parser = subcommands.add_parser("discard", help="delete a stopped instance")
+    discard_parser.add_argument("--refs", action="store_true", help="also delete this instance's tracking refs")
+    discard_parser.add_argument("--yes", action="store_true", help="discard without interactive confirmation")
     for name, subparser in subcommands.choices.items():
         if name != "list":
             subparser.add_argument("--project", default=".", help="repository path (default: current repository)")
@@ -296,14 +477,23 @@ def main():
     args = parser.parse_args()
     os.umask(0o077)
     try:
+        if args.command == "list":
+            list_projects()
+            return 0
         with tempfile.TemporaryDirectory(prefix="dotflake-agent-home-") as home:
-            project = Project(Git(home), args.project, args.instance)
+            project = Project(Git(home), args.project, args.instance,
+                              create_instance=args.command in ("push", "import"))
             if args.command == "push":
                 push(project, args.branch)
-            else:
+            elif args.command == "import":
                 import_bundle(project, args.max_bytes)
+            elif args.command == "review":
+                review(project, args.ref)
+            else:
+                discard(project, args.refs, args.yes)
     except (AgentError, OSError) as error:
-        print(f"dotflake-agent: {error}", file=sys.stderr)
+        message = escaped(os.fsencode(str(error))) if args.command == "review" else str(error)
+        print(f"dotflake-agent: {message}", file=sys.stderr)
         return 1
     return 0
 

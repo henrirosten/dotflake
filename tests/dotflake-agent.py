@@ -1,5 +1,6 @@
 """Offline black-box tests of the packaged host and guest transport commands."""
 
+import fcntl
 import os
 from pathlib import Path
 import subprocess
@@ -120,6 +121,9 @@ class Transport(unittest.TestCase):
         wip = self.ref("refs/export/wip", self.guest)
         self.assertEqual(self.ref(f"{wip}^", self.guest), head)
         self.helper("import")
+        output = self.helper("review").stdout.decode()
+        self.assertIn(f"Target: {wip}", output)
+        self.assertIn("+guest unstaged", output)
         for branch in ("main", "feature"):
             self.assertEqual(self.ref(f"refs/remotes/vm-test/heads/{branch}"), head)
         self.assertEqual(self.ref("refs/remotes/vm-test/wip"), wip)
@@ -229,6 +233,168 @@ class Transport(unittest.TestCase):
         before = self.refs()
         self.helper("import", success=False)
         self.assertEqual(before, self.refs())
+
+    def import_files(self, files, message=b"Guest review fixture\n"):
+        """Make exact guest tree bytes, bypassing attribute-driven conversions."""
+        for path, (mode, content) in files.items():
+            oid = content if mode == "160000" else self.git(
+                self.guest, "hash-object", "-w", "--stdin", input=content,
+            ).strip()
+            self.git(self.guest, "update-index", "--add", "--cacheinfo", mode, oid, os.fsdecode(path))
+        tree = self.git(self.guest, "write-tree").strip()
+        # commit-tree repairs invalid UTF-8; write raw commit bytes to test the renderer.
+        raw = (f"tree {tree}\nparent {self.ref('HEAD', self.guest)}\n"
+               "author Transport test <transport@example.invalid> 0 +0000\n"
+               "committer Transport test <transport@example.invalid> 0 +0000\n\n").encode() + message
+        commit = self.git(self.guest, "hash-object", "-t", "commit", "-w", "--stdin", input=raw).strip()
+        self.git(self.guest, "update-ref", "refs/heads/main", commit)
+        self.git(self.guest, "update-ref", "refs/export/wip", commit)
+        (self.instance() / "outbox/export.bundle").write_bytes(self.bundle("--branches", "refs/export/wip"))
+        self.helper("import")
+        return commit
+
+    def test_review_hostile_attributes_paths_and_content(self):
+        (self.host / "flake.nix").write_bytes(b"{ before = true; }\n")
+        self.git(self.host, "add", "flake.nix")
+        self.git(self.host, "commit", "-m", "Review base")
+        base = self.ref("HEAD")
+        self.init_guest()
+        controls = (b"CSI \x1b[31mred\x1b[0m\nOSC \x1b]0;title\x07\n"
+                    b"C0 \x01 DEL \x7f C1 \xc2\x85\nInvalid \xff\x80\n"
+                    b"Literal \\x1b[31m actual \x1b[31m\n" +
+                    "Bidi \u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069\n".encode())
+        odd_path = b"odd\tline\n\x1b\xff" + "\u202e".encode() + b".txt"
+        files = {
+            b".gitattributes": ("100644", b"* diff=evil filter=evil\n* text eol=crlf\n*.nix -diff\n"),
+            b"sub/.gitattributes": ("100644", b"*.nix -diff\n"),
+            b"sub/.envrc": ("100644", b"use flake\n"),
+            b"sub/flake.nix": ("100644", b"{ nestedFlake = true; }\n"),
+            b"sub/flake.lock": ("100644", b"{}\n"),
+            b"flake.nix": ("100644", b"{ after = true; }\r\n"),
+            b"sub/module.nix": ("100644", b"{ nested = true; }\n"),
+            b"controls.txt": ("100644", controls),
+            odd_path: ("100644", b"odd path content\n++ preserved line\n"),
+            b":(glob)*": ("100644", b"literal pathspec\n"),
+            b".gitmodules": ("100644", b"# submodules\n"),
+            b".envrc": ("100644", b"use flake\n"),
+            b"flake.lock": ("100644", b"{}\n"),
+            b".github/workflows/check.yml": ("100644", b"name: check\n"),
+            b".pre-commit-config.yaml": ("100644", b"repos: []\n"),
+            b"lefthook.yml": ("100644", b"pre-commit: {}\n"),
+            b".husky/pre-commit": ("100644", b"exit 0\n"),
+            b".vscode/settings.json": ("100644", b"{}\n"),
+            b".idea/workspace.xml": ("100644", b"<project/>\n"),
+            b"run.sh": ("100755", b"#!/bin/sh\nexit 0\n"),
+            b"tracked": ("100755", b"initial\n"),
+            b"link": ("120000", b"../target"),
+            b"submodule": ("160000", base),
+            b"large.dat": ("100644", b"version https://git-lfs.github.com/spec/v1\n"
+                           b"oid sha256:" + b"a" * 64 + b"\nsize 42\n"),
+            b"binary.dat": ("100644", b"\0\xffopaque\n"),
+        }
+        target = self.import_files(files, b"Guest controls \x1b]0;log\x07 \xff " + "\u202e\n".encode())
+        marker = self.root / "driver-marker"
+        driver = self.root / "evil-driver"
+        driver.write_text(f"#!/bin/sh\nprintf ran > '{marker}'\nprintf converted\n")
+        driver.chmod(0o755)
+        self.run_command(str(driver))
+        self.assertTrue(marker.exists())
+        marker.unlink()
+        for setting in ("diff.evil.textconv", "diff.evil.command", "filter.evil.clean", "filter.evil.smudge"):
+            self.git(self.host, "config", setting, str(driver))
+        (self.host / ".git/info/attributes").write_text("* -diff\n")
+        hook_markers = self.marker_hooks()
+        before = self.checkout_state(self.host)
+        refs = self.refs()
+        output = self.helper("review").stdout.decode("utf-8")
+        self.assertIn(f"Host HEAD: {base}\nTarget: {target}\nMerge base: {base}", output)
+        self.assertTrue(output.endswith(f"To merge exactly this reviewed commit: git merge {target}\n"))
+        self.assertIn("+{ after = true; }\\x0d\n", output)
+        self.assertIn("+{ nested = true; }", output)
+        self.assertIn("+literal pathspec", output)
+        self.assertIn("+++ preserved line", output)
+        self.assertIn("Guest controls \\x1b]0;log\\x07 \\xff \\u{202e}", output)
+        for expected in (r"\x1b[31m", r"\x1b]0;title\x07", r"\x01", r"\x7f", r"\u{0085}", r"\xff\x80"):
+            self.assertIn(expected, output)
+        self.assertIn(r"Literal \\x1b[31m actual \x1b[31m", output)
+        for code in (*range(0x202A, 0x202F), *range(0x2066, 0x206A)):
+            self.assertIn(f"\\u{{{code:04x}}}", output)
+        for character in output:
+            code = ord(character)
+            self.assertFalse((code < 32 and character not in "\n\t") or 0x7F <= code <= 0x9F or
+                             0x202A <= code <= 0x202E or 0x2066 <= code <= 0x2069)
+        quoted = r'"odd\x09line\x0a\x1b\xff\u{202e}.txt"'
+        summary = output.split("Changed paths (status, old mode -> new mode)\n", 1)[1].split("\nRuns on", 1)[0]
+        self.assertIn(f"A 000000 -> 100644 {quoted}", summary)
+        # Git quotes path bytes first; escaped() then doubles its backslashes.
+        patch_path = r'odd\\tline\\n\\033\\377\\342\\200\\256.txt'
+        self.assertIn(f'diff --git "a/{patch_path}" "b/{patch_path}"\n', output)
+        self.assertIn(f'+++ "b/{patch_path}"\n', output)
+        highlights = output.split("Runs on the host after merge\n", 1)[1].split("\nNot reviewed", 1)[0]
+        for path in (".gitattributes", "sub/.gitattributes", ".gitmodules", ".envrc", "flake.nix", "flake.lock",
+                     "sub/.envrc", "sub/flake.nix", "sub/flake.lock",
+                     ".github/workflows/check.yml", ".pre-commit-config.yaml", "lefthook.yml", ".husky/pre-commit",
+                     ".vscode/settings.json", ".idea/workspace.xml", "run.sh", "tracked", "link", "submodule", "large.dat"):
+            self.assertIn(f'"{path}":', highlights)
+        self.assertIn('"binary.dat": not reviewed', output)
+        self.assertIn("+../target", output)
+        self.assertIn(f"+Subproject commit {base}", output)
+        self.assertFalse(marker.exists())
+        for marker in hook_markers:
+            self.assertFalse(marker.exists())
+        self.assertEqual(before, self.checkout_state(self.host))
+        self.assertEqual(refs, self.refs())
+
+    def test_review_refs_and_unrelated_history(self):
+        self.init_guest()
+        self.export()
+        self.helper("import")
+        before = self.refs()
+        checkout = self.checkout_state(self.host)
+        for ref in ("refs/heads/main", "refs/remotes/vm-other/wip", "refs/remotes/vm-tester/wip"):
+            result = self.helper("review", ref, success=False)
+            self.assertIn(b"review ref must be inside refs/remotes/vm-test/", result.stderr)
+        self.assertEqual(before, self.refs())
+        tree = self.ref("HEAD^{tree}", self.guest)
+        unrelated = self.git(self.guest, "commit-tree", tree, input=b"Unrelated root\n").strip()
+        self.git(self.guest, "update-ref", "refs/export/wip", unrelated)
+        (self.instance() / "outbox/export.bundle").write_bytes(self.bundle("--branches", "refs/export/wip"))
+        self.helper("import")
+        before = self.refs()
+        result = self.helper("review", success=False)
+        self.assertIn(b"unrelated histories (no merge base)", result.stderr)
+        self.assertEqual(checkout, self.checkout_state(self.host))
+        self.assertEqual(before, self.refs())
+
+    def test_discard_lock_and_outbox_symlink(self):
+        self.init_guest()
+        self.export()
+        self.helper("import")
+        instance = self.instance()
+        self.git(self.host, "update-ref", "refs/remotes/vm-other/wip", self.initial)
+        self.git(self.host, "update-ref", "refs/remotes/vm-tester/wip", self.initial)
+        markers = self.marker_hooks()
+        outside = self.root / "outside"
+        outside.mkdir()
+        (outside / "survive").write_text("keep\n")
+        (instance / "outbox/escape").symlink_to(outside, target_is_directory=True)
+        before = self.refs()
+        checkout = self.checkout_state(self.host)
+        with (instance.parents[1] / "locks/test.lock").open("a+b") as held:
+            fcntl.flock(held, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            result = self.helper("discard", "--refs", "--yes", success=False)
+            self.assertIn(b"instance is running: test", result.stderr)
+            self.assertTrue(instance.exists())
+            self.assertEqual(before, self.refs())
+        self.helper("discard", "--refs", "--yes")
+        self.assertFalse(instance.exists())
+        self.assertEqual((outside / "survive").read_text(), "keep\n")
+        expected = b"".join(line + b"\n" for line in before.splitlines()
+                            if not line.startswith(b"refs/remotes/vm-test/"))
+        self.assertEqual(expected, self.refs())
+        self.assertEqual(checkout, self.checkout_state(self.host))
+        for marker in markers:
+            self.assertFalse(marker.exists())
 
 
 if __name__ == "__main__":
