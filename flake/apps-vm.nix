@@ -49,30 +49,55 @@ forAllSystems (
                       }
                     ];
                     qemu.consoles = lib.mkForce [ "ttyS0,115200n8" ];
-                    qemu.options = lib.mkAfter ([
-                      "-display none"
-                      "-serial mon:stdio"
-                      "-device virtio-balloon"
-                      "-enable-kvm"
-                      # Ask QEMU to self-restrict host-side capabilities.
-                      "-sandbox on,obsolete=deny,elevateprivileges=deny,spawn=deny,resourcecontrol=deny"
-                    ]);
-                    sharedDirectories =
-                      if isGeneric then
-                        lib.mkForce {
-                          nix-store = {
-                            source = builtins.storeDir;
-                            target = "/nix/.ro-store";
-                          };
-                          # Keep only bootstrap auth as a transient host share.
-                          auth-bootstrap = {
-                            # One-way bootstrap source prepared by run-vm.sh.
-                            source = ''"''${AUTH_VM_BOOTSTRAP_DIR:-$TMPDIR/xchg}"'';
-                            target = "/mnt/auth-bootstrap";
-                          };
-                        }
-                      else
-                        { };
+                    # In-process 9p needs no shared-memory backend.
+                    qemu.enableSharedMemory = lib.mkForce false;
+                    qemu.options = lib.mkAfter (
+                      [
+                        "-display none"
+                        "-serial mon:stdio"
+                        "-device virtio-balloon"
+                        "-enable-kvm"
+                        # Ask QEMU to self-restrict host-side capabilities.
+                        "-sandbox on,obsolete=deny,elevateprivileges=deny,spawn=deny,resourcecontrol=deny"
+                        # Unprivileged virtiofsd retains inode descriptors and can
+                        # exhaust its guest FD budget. QEMU's 9p server reclaims FDs.
+                        "-virtfs local,path=${builtins.storeDir},mount_tag=nix-store,security_model=none,readonly=on"
+                      ]
+                      ++ lib.optionals isGeneric [
+                        # Enforce read-only on the host, including for guest root.
+                        ''-virtfs local,path="''${AUTH_VM_BOOTSTRAP_DIR:-$TMPDIR/xchg}",mount_tag=auth-bootstrap,security_model=none,readonly=on''
+                      ]
+                    );
+                    sharedDirectories = lib.mkForce { };
+                    fileSystems = {
+                      "/nix/.ro-store" = {
+                        device = "nix-store";
+                        fsType = "9p";
+                        neededForBoot = true;
+                        options = [
+                          "trans=virtio"
+                          "version=9p2000.L"
+                          "msize=524288"
+                          "cache=loose"
+                          "ro"
+                        ];
+                      };
+                    } // lib.optionalAttrs isGeneric {
+                      "/mnt/auth-bootstrap" = {
+                        device = "auth-bootstrap";
+                        fsType = "9p";
+                        neededForBoot = true;
+                        options = [
+                          "trans=virtio"
+                          "version=9p2000.L"
+                          "msize=524288"
+                          "ro"
+                          "nosuid"
+                          "nodev"
+                          "noexec"
+                        ];
+                      };
+                    };
                   };
                 };
                 services.getty.autologinUser = lib.mkForce username;
@@ -261,13 +286,6 @@ forAllSystems (
                   };
               }
               (lib.optionalAttrs isGeneric {
-                # Keep bootstrap share read-only and non-executable in guest.
-                fileSystems."/mnt/auth-bootstrap".options = lib.mkAfter [
-                  "ro"
-                  "nosuid"
-                  "nodev"
-                  "noexec"
-                ];
                 systemd.services.auth-bootstrap = {
                   description = "Copy auth credentials from bootstrap share";
                   after = [ "local-fs.target" ];

@@ -106,6 +106,7 @@ nix run .#x1-vm -- --help
 ```
 
 Default behavior: VM disk images are deleted on exit; add `--keep-disk` to persist them.
+VM apps share the Nix store over host-enforced read-only 9p. There are no default exchange folders; use `--share-dir` to share host directories.
 
 Example custom resources:
 ```bash
