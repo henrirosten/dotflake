@@ -108,6 +108,13 @@
           ;
       };
 
+      packages = import ./flake/packages.nix {
+        inherit
+          forAllSystems
+          mkPkgs
+          ;
+      };
+
       checks = import ./flake/checks.nix {
         inherit
           inputs
@@ -116,6 +123,7 @@
           mkPreCommitCheck
           defaultSystem
           stateVersion
+          packages
           ;
         moduleOutputs = moduleOutputs;
       };
@@ -146,6 +154,7 @@
         homeConfigurations
         nixosConfigurations
         apps
+        packages
         formatter
         checks
         devShells

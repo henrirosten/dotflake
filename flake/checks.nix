@@ -6,6 +6,7 @@
   defaultSystem,
   stateVersion,
   moduleOutputs,
+  packages,
 }:
 forAllSystems (
   system:
@@ -22,6 +23,22 @@ forAllSystems (
   in
   {
     pre-commit-check = mkPreCommitCheck system;
+    dotflake-agent =
+      pkgs.runCommand "dotflake-agent-tests"
+        {
+          nativeBuildInputs = [
+            pkgs.python3
+            pkgs.git
+            packages.${system}.dotflake-agent
+            packages.${system}.dotflake-agent-guest
+          ];
+        }
+        ''
+          export HOME="$TMPDIR/home"
+          mkdir -p "$HOME"
+          python3 ${../tests/dotflake-agent.py}
+          touch "$out"
+        '';
   }
   // lib.optionalAttrs (system == defaultSystem) {
     x1-vm-smoke = pkgs.testers.runNixOSTest {
