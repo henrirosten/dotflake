@@ -80,10 +80,6 @@ forAllSystems (
                         # exhaust its guest FD budget. QEMU's 9p server reclaims FDs.
                         "-virtfs local,path=${builtins.storeDir},mount_tag=nix-store,security_model=none,readonly=on"
                       ]
-                      ++ lib.optionals (isGeneric && !agentMode) [
-                        # Enforce read-only on the host, including for guest root.
-                        ''-virtfs local,path="''${AUTH_VM_BOOTSTRAP_DIR:-$TMPDIR/xchg}",mount_tag=auth-bootstrap,security_model=none,readonly=on''
-                      ]
                     );
                     sharedDirectories = lib.mkForce { };
                     fileSystems = {
@@ -97,21 +93,6 @@ forAllSystems (
                           "msize=524288"
                           "cache=loose"
                           "ro"
-                        ];
-                      };
-                    } // lib.optionalAttrs (isGeneric && !agentMode) {
-                      "/mnt/auth-bootstrap" = {
-                        device = "auth-bootstrap";
-                        fsType = "9p";
-                        neededForBoot = true;
-                        options = [
-                          "trans=virtio"
-                          "version=9p2000.L"
-                          "msize=524288"
-                          "ro"
-                          "nosuid"
-                          "nodev"
-                          "noexec"
                         ];
                       };
                     };
@@ -155,9 +136,6 @@ forAllSystems (
                 programs.ssh.setXAuthLocation = lib.mkForce true;
                 systemd.tmpfiles.rules = [
                   "d /mnt/host-share 0755 ${username} users -"
-                ]
-                ++ lib.optionals isGeneric [
-                  "d /mnt/auth-bootstrap 0755 root root -"
                 ];
                 systemd.services.host-share-mount = {
                   description = "Mount optional host shares at /mnt/host-share";
@@ -304,55 +282,6 @@ forAllSystems (
                     '';
                   };
               })
-              (lib.optionalAttrs (isGeneric && !agentMode) {
-                systemd.services.auth-bootstrap = {
-                  description = "Copy auth credentials from bootstrap share";
-                  after = [ "local-fs.target" ];
-                  wants = [ "local-fs.target" ];
-                  before = [ "getty.target" ];
-                  wantedBy = [ "multi-user.target" ];
-                  serviceConfig.Type = "oneshot";
-                  script = ''
-                    if ! ${pkgs.util-linux}/bin/mountpoint -q /mnt/auth-bootstrap; then
-                      exit 0
-                    fi
-                    user_group="$(${pkgs.coreutils}/bin/id -gn ${username} 2>/dev/null || echo users)"
-
-                    # Codex auth
-                    if [ -f /mnt/auth-bootstrap/codex-auth.json ]; then
-                      ${pkgs.coreutils}/bin/install -d -m 0700 ${homeDir}/.codex
-                      ${pkgs.coreutils}/bin/install -m 0600 \
-                        /mnt/auth-bootstrap/codex-auth.json \
-                        ${homeDir}/.codex/auth.json
-                      ${pkgs.coreutils}/bin/chown ${username}:"$user_group" ${homeDir}/.codex ${homeDir}/.codex/auth.json
-                      ${pkgs.coreutils}/bin/rm -f /mnt/auth-bootstrap/codex-auth.json || true
-                    fi
-
-                    # Claude Code auth
-                    if [ -f /mnt/auth-bootstrap/claude-credentials.json ]; then
-                      ${pkgs.coreutils}/bin/install -d -m 0700 ${homeDir}/.claude
-                      ${pkgs.coreutils}/bin/install -m 0600 \
-                        /mnt/auth-bootstrap/claude-credentials.json \
-                        ${homeDir}/.claude/.credentials.json
-                      if [ -f /mnt/auth-bootstrap/claude-settings.json ]; then
-                        ${pkgs.coreutils}/bin/install -m 0600 \
-                          /mnt/auth-bootstrap/claude-settings.json \
-                          ${homeDir}/.claude/settings.json
-                      fi
-                      # Mark onboarding complete so claude skips the first-run wizard.
-                      echo '{"hasCompletedOnboarding":true}' \
-                        | ${pkgs.coreutils}/bin/install -m 0600 /dev/stdin ${homeDir}/.claude.json
-                      ${pkgs.coreutils}/bin/chown -R ${username}:"$user_group" ${homeDir}/.claude ${homeDir}/.claude.json
-                      ${pkgs.coreutils}/bin/rm -f /mnt/auth-bootstrap/claude-credentials.json /mnt/auth-bootstrap/claude-settings.json || true
-                    fi
-
-                    # Drop live host mount after bootstrap to reduce host interaction surface.
-                    if ${pkgs.util-linux}/bin/mountpoint -q /mnt/auth-bootstrap; then
-                      ${pkgs.util-linux}/bin/umount /mnt/auth-bootstrap || true
-                    fi
-                  '';
-                };
-              })
             ]
           )
         ]
@@ -375,8 +304,6 @@ forAllSystems (
           defaultCpus = toString vcpus;
           defaultDiskSize = "${toString diskGb}G";
           defaultDiskImage = "./${name}.qcow2";
-          defaultCleanupDisk = "1";
-          bootstrapAuth = if isGeneric then "1" else "0";
           mktemp = "${pkgs.coreutils}/bin/mktemp";
           qemuImg = "${pkgs.qemu}/bin/qemu-img";
           mkfsExt4 = "${pkgs.e2fsprogs}/bin/mkfs.ext4";

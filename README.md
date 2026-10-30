@@ -125,8 +125,6 @@ Shares are read-only, enforced by QEMU on the host and mounted `ro` in the guest
 
 Environment overrides:
 - `NIX_DISK_IMAGE` (default: `./<vm-name>.qcow2`)
-- `CODEX_HOST_AUTH_FILE` (default: `$HOME/.codex/auth.json`)
-- `CLAUDE_HOST_AUTH_FILE` (default: `$HOME/.claude/.credentials.json`)
 
 ### Run Graphical Apps On `generic-vm` Over SSH
 
