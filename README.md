@@ -121,10 +121,10 @@ nix run .#generic-vm -- --share-dir ~/.config --share-dir ~/src/dotflake
 With one shared directory, it is mounted at `/mnt/host-share`. With multiple shared directories, they are mounted under `/mnt/host-share/<name>`. The autologin shell still starts in the user's home directory and prints the mounted share paths.
 Shared paths must not contain `:`, commas, or whitespace.
 
+Shares are read-only, enforced by QEMU on the host and mounted `ro` in the guest.
+
 Environment overrides:
 - `NIX_DISK_IMAGE` (default: `./<vm-name>.qcow2`)
-- `VM_HOST_SHARE_DIR` (same effect as `--share-dir`)
-- `VM_HOST_SHARE_DIRS` (same effect as repeating `--share-dir`, colon-separated; shared paths must not contain `:`)
 - `CODEX_HOST_AUTH_FILE` (default: `$HOME/.codex/auth.json`)
 - `CLAUDE_HOST_AUTH_FILE` (default: `$HOME/.claude/.credentials.json`)
 

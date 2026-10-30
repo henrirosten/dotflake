@@ -140,7 +140,6 @@ forAllSystems (
                     share_root=/mnt/host-share
                     share_state_dir=/run/vm-host-shares
                     share_list="$share_state_dir/paths"
-                    user_group="$(${pkgs.coreutils}/bin/id -gn ${username} 2>/dev/null || echo users)"
                     mounted_any=0
 
                     ${pkgs.coreutils}/bin/mkdir -p "$share_root" "$share_state_dir"
@@ -166,11 +165,10 @@ forAllSystems (
 
                       if ! ${pkgs.util-linux}/bin/mountpoint -q "$mount_path"; then
                         ${pkgs.util-linux}/bin/mount -t 9p \
-                          -o trans=virtio,version=9p2000.L,rw,msize=104857600,nosuid,nodev \
+                          -o trans=virtio,version=9p2000.L,ro,msize=104857600,nosuid,nodev \
                           "$tag_name" "$mount_path"
                       fi
 
-                      ${pkgs.coreutils}/bin/chown ${username}:"$user_group" "$mount_path" || true
                       printf '%s\n' "$mount_path" >> "$share_list"
                       mounted_any=1
                     done

@@ -8,8 +8,6 @@ disk_size="@defaultDiskSize@"
 disk_image="${NIX_DISK_IMAGE:-@defaultDiskImage@}"
 host_codex_auth_file="${CODEX_HOST_AUTH_FILE:-$HOME/.codex/auth.json}"
 host_claude_auth_file="${CLAUDE_HOST_AUTH_FILE:-$HOME/.claude/.credentials.json}"
-host_share_dir="${VM_HOST_SHARE_DIR:-}"
-host_share_dirs_env="${VM_HOST_SHARE_DIRS:-}"
 declare -a host_share_dirs=()
 declare -a host_share_names=()
 managed_auth_bootstrap_dir=0
@@ -17,15 +15,8 @@ auth_bootstrap_dir=""
 override_ram=0
 override_cpus=0
 override_disk_size=0
-use_cli_share_dirs=0
 
 umask 077
-
-if [ -n "$host_share_dirs_env" ]; then
-  IFS=: read -r -a host_share_dirs <<<"$host_share_dirs_env"
-elif [ -n "$host_share_dir" ]; then
-  host_share_dirs=("$host_share_dir")
-fi
 
 share_name_in_use() {
   local name="$1"
@@ -82,7 +73,7 @@ validate_share_dir() {
   dir="$(cd "$dir" && pwd -P)"
   case "$dir" in
   *":"*)
-    echo "--share-dir must not contain colons (reserved by VM_HOST_SHARE_DIRS): $dir" >&2
+    echo "--share-dir must not contain colons: $dir" >&2
     exit 2
     ;;
   *","*)
@@ -127,10 +118,6 @@ while [ "$#" -gt 0 ]; do
     shift 2
     ;;
   --share-dir)
-    if [ "$use_cli_share_dirs" -eq 0 ]; then
-      host_share_dirs=()
-      use_cli_share_dirs=1
-    fi
     host_share_dirs+=("$2")
     shift 2
     ;;
@@ -159,12 +146,10 @@ Options:
   --cpus N           Number of CPUs (default: @defaultCpus@)
   --disk-size SIZE   Disk size (e.g. 8G, 16384M; default: @defaultDiskSize@)
   --disk-image PATH  Disk image path (default: @defaultDiskImage@)
-  --share-dir PATH   Share host directory with the guest (repeatable)
+  --share-dir PATH   Share host directory read-only (repeatable)
 
 Environment:
   NIX_DISK_IMAGE     Override disk image path (default: @defaultDiskImage@)
-  VM_HOST_SHARE_DIR  Host directory shared to guest (single-share compatibility)
-  VM_HOST_SHARE_DIRS Host directories shared to guest, colon-separated
   CODEX_HOST_AUTH_FILE   Host Codex auth file for one-way VM bootstrap (default: $HOME/.codex/auth.json)
   CLAUDE_HOST_AUTH_FILE  Host Claude auth file for one-way VM bootstrap (default: $HOME/.claude/.credentials)
 
@@ -201,22 +186,14 @@ if [ "${#host_share_dirs[@]}" -gt 0 ]; then
 fi
 
 if [ "${#host_share_dirs[@]}" -gt 0 ]; then
-  share_dirs_env=""
-  for host_share_dir in "${host_share_dirs[@]}"; do
-    share_dirs_env="${share_dirs_env:+$share_dirs_env:}$host_share_dir"
-  done
-  export VM_HOST_SHARE_DIRS="$share_dirs_env"
-
   if [ "${#host_share_dirs[@]}" -eq 1 ]; then
-    export VM_HOST_SHARE_DIR="${host_share_dirs[0]}"
-    export QEMU_OPTS="${QEMU_OPTS:+$QEMU_OPTS }-virtfs local,path=${host_share_dirs[0]},mount_tag=host-share,security_model=none,multidevs=remap"
+    export QEMU_OPTS="${QEMU_OPTS:+$QEMU_OPTS }-virtfs local,path=${host_share_dirs[0]},mount_tag=host-share,security_model=none,multidevs=remap,readonly=on"
   else
-    unset VM_HOST_SHARE_DIR || true
     for host_share_dir in "${host_share_dirs[@]}"; do
       host_share_names+=("$(derive_share_name "$host_share_dir")")
     done
     for i in "${!host_share_dirs[@]}"; do
-      export QEMU_OPTS="${QEMU_OPTS:+$QEMU_OPTS }-virtfs local,path=${host_share_dirs[i]},mount_tag=host-share-${host_share_names[i]},security_model=none,multidevs=remap"
+      export QEMU_OPTS="${QEMU_OPTS:+$QEMU_OPTS }-virtfs local,path=${host_share_dirs[i]},mount_tag=host-share-${host_share_names[i]},security_model=none,multidevs=remap,readonly=on"
     done
   fi
 fi
