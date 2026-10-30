@@ -151,6 +151,79 @@ Notes:
 - Use `-Y` (trusted X11 forwarding) for better compatibility with desktop apps.
 - Your host must have a running X server for forwarded windows to appear.
 
+## Agent VMs
+
+Run coding agents in a VM that never gets write access to a host checkout.
+Work comes back as Git commits that you review and merge by commit ID.
+The first launch clones the branch you start from into `/work` in the guest.
+No host directory is shared; each later launch sends the branch again, and the
+guest fetches it into `host/<branch>` at boot without changing its own branches.
+The instance keeps its home directory and `/work` across restarts.
+Named instances let several agents work on the same project side by side.
+
+The launcher is not in Home Manager because it depends on a VM that itself
+uses the Home Manager profile; including it there would create a dependency cycle.
+
+With the installed launcher, start from the target repository and commit host
+edits first. For example:
+
+```bash
+# Host: start the instance and run Codex in the guest checkout.
+dotflake-vm --auth codex --exec codex
+# Guest: after editing or committing in /work, export branches and uncommitted work.
+agent-export
+# Host: import, review, then merge the exact commit ID printed by review.
+dotflake-agent import
+dotflake-agent review
+git merge <commit-id-from-review>
+# Host: send newer commits to a running instance (each launch does this).
+dotflake-agent push
+# Guest: fetch them, then merge or rebase host/<branch> yourself.
+agent-update
+```
+
+Existing credentials are kept unless you add `--auth-replace`.
+The guest prompt shows `vm` followed by the providers that currently have
+credentials in the guest, for example `vm codex copilot`.
+`--exec` runs once after console login. `/work` survives shutdown, but changes
+reach the host only through `agent-export`, so export before powering off:
+`--exec 'codex; agent-export; sudo poweroff'`. Shut down with `sudo poweroff`:
+QEMU's Ctrl-A x skips the guest shutdown, like pulling the plug, and can lose
+the last few seconds of guest writes.
+
+The host terminal size and `TERM` are applied before it starts, but later host terminal resizes do not reach the guest.
+Copilot supports wheel scrolling without an extra mouse flag; if mouse support was disabled in its saved settings, use `--mouse=on` to enable it again. Hold Shift while dragging to select text with the host terminal. `--no-mouse` disables Copilot's own wheel scrolling. Copilot's own copy uses OSC 52 escape sequences, which some terminals, such as GNOME Terminal (VTE), ignore; use the host terminal's Ctrl+Shift+C / Ctrl+Shift+V instead.
+
+Without `=FILE`, Codex uses `${CODEX_HOME:-$HOME/.codex}/auth.json`, Claude uses
+`${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.credentials.json`, and Copilot uses
+`COPILOT_GITHUB_TOKEN`, then the `copilot-cli` keyring entry. Missing defaults
+print a note and continue. Use a file to select another account (`~/` expands to
+`$HOME`); the last occurrence of a provider wins:
+
+```bash
+dotflake-vm --instance personal --auth codex=~/.codex-personal/auth.json
+```
+
+Copilot files contain a token, exported as `COPILOT_GITHUB_TOKEN` in the guest.
+Use a fine-grained PAT with only **Copilot Requests** permission. Store it with
+`nix shell nixpkgs#libsecret -c secret-tool store --label='Copilot CLI' service copilot-cli`.
+Broader tokens require explicit opt-in, such as `--auth copilot=<(gh auth token)`.
+
+The bootstrap token lives under `/run` in the guest. Codex and Claude credentials
+selected with `--auth` persist on the data disk until deleted inside the guest
+or with `discard`; omitting `--auth` does not revoke them. Manage instances with:
+
+```bash
+dotflake-agent list
+dotflake-agent discard --refs
+```
+
+`discard` requires the instance to be stopped and asks you to type its name;
+`--refs` also removes its imported tracking refs. State lives under
+`${XDG_STATE_HOME:-$HOME/.local/state}/dotflake/agents/`.
+The guest still has network access to the host and LAN. Merged flakes, `.envrc`,
+hooks and CI can run code on the host, which is why `review` highlights them.
+
 ## Standalone Home Manager (Ubuntu and similar)
 
 Install Nix (automatic mode):
