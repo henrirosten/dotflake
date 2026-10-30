@@ -12,6 +12,8 @@ auth_replace=0
 instance_dir=""
 auth_bootstrap_dir=""
 runner_pid=""
+network_pid=""
+network_dir=""
 tmp_raw=""
 agent_locked=0
 
@@ -72,6 +74,8 @@ host/<branch> at boot. The persistent data disk is 32 GiB. Shut down with
 sudo poweroff: Ctrl-A x skips the guest shutdown and can lose recent writes.
 Credentials persist until deleted in the guest or with dotflake-agent
 discard. Copilot bootstrap tokens live under /run.
+The guest reaches only the internet: the host blocks host, LAN, VPN,
+link-local and multicast addresses. No ports are forwarded.
 Without FILE: codex uses ${CODEX_HOME:-$HOME/.codex}/auth.json;
 claude uses ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.credentials.json;
 copilot uses COPILOT_GITHUB_TOKEN, then the copilot-cli keyring entry.
@@ -117,6 +121,12 @@ cleanup() {
     kill -TERM "$runner_pid" 2>/dev/null || true
     wait "$runner_pid" 2>/dev/null || true
   fi
+  if [ -n "$network_pid" ]; then
+    # The setup shell is PID 1 in pasta's namespace and ignores SIGTERM.
+    kill -KILL -- "-$network_pid" 2>/dev/null || true
+    wait "$network_pid" 2>/dev/null || true
+  fi
+  [ -z "$network_dir" ] || rm -rf -- "$network_dir"
   if [ -n "$auth_bootstrap_dir" ]; then
     for f in "$auth_bootstrap_dir"/codex-auth.json "$auth_bootstrap_dir"/claude-credentials.json "$auth_bootstrap_dir"/copilot-github-token; do
       if [ -f "$f" ]; then
@@ -211,6 +221,76 @@ if [ -n "$guest_exec" ]; then
     printf '%s\n' "${TERM:-}"
     printf '%s\n' "$guest_exec"
   } >"$auth_bootstrap_dir/exec-command"
+fi
+
+# passt hands these resolvers to the guest, and the namespace allows only DNS
+# to them. Loopback stubs and link-local resolvers are unreachable there, so
+# prefer systemd-resolved's upstream list and skip them.
+resolv=/etc/resolv.conf
+[ ! -r /run/systemd/resolve/resolv.conf ] || resolv=/run/systemd/resolve/resolv.conf
+dns_servers=()
+while read -r key server _; do
+  case "$key:$server" in
+  nameserver:127.* | nameserver:::1 | nameserver:fe80:* | nameserver:*%*) ;;
+  nameserver:?*) dns_servers+=("$server") ;;
+  esac
+done <"$resolv"
+if [ "${#dns_servers[@]}" -eq 0 ]; then
+  echo "No usable DNS server in $resolv; the filtered VM network needs a non-loopback resolver" >&2
+  exit 1
+fi
+
+# Block private and special ranges, plus the host's own addresses and directly
+# connected networks, which can be public (especially with IPv6). `ip rule add`
+# rejects duplicates, so normalize and deduplicate.
+mapfile -t blocked < <(
+  {
+    printf '"%s"\n' 0.0.0.0/8 10.0.0.0/8 100.64.0.0/10 127.0.0.0/8 169.254.0.0/16 \
+      172.16.0.0/12 192.168.0.0/16 224.0.0.0/4 240.0.0.0/4 ::1/128 fc00::/7 fe80::/10 ff00::/8
+    ip -j address show | jq '.[].addr_info[].local'
+    for family in -4 -6; do
+      ip -j "$family" route show | jq '.[] | select(.gateway == null and .dst != "default") | .dst'
+    done
+  } | jq -r 'if test("/") then . elif test(":") then . + "/128" else . + "/32" end' | sort -u
+)
+
+network_dir=$(@mktemp@ -d "${XDG_RUNTIME_DIR:-/tmp}/df-net.XXXXXX")
+export AGENT_NET_SOCKET="$network_dir/net.sock"
+# A separate process group lets cleanup stop both pasta and passt. Close the
+# instance lock before creating any network children, including on failure.
+# Expand the script in the namespace, not in the launcher.
+# shellcheck disable=SC2016
+setsid pasta --config-net -t none -u none -T none -U none --no-map-gw -q -- \
+  bash -euo pipefail -c '
+    socket=$1 dns_count=$2
+    shift 2
+    dns_options=()
+    for server in "${@:1:dns_count}"; do
+      family=-4
+      [[ $server != *:* ]] || family=-6
+      for protocol in tcp udp; do
+        ip "$family" rule add pref 100 to "$server" ipproto "$protocol" dport 53 lookup main
+      done
+      dns_options+=(-D "$server")
+    done
+    for net in "${@:dns_count+1}"; do
+      family=-4
+      [[ $net != *:* ]] || family=-6
+      ip "$family" rule add pref 200 prohibit to "$net"
+    done
+    exec passt -f -q -t none -u none --no-map-gw -s "$socket" "${dns_options[@]}"
+  ' dotflake-vm-network "$AGENT_NET_SOCKET" "${#dns_servers[@]}" "${dns_servers[@]}" \
+  "${blocked[@]}" 9>&- </dev/null &
+network_pid=$!
+for _ in {1..100}; do
+  if [ -S "$AGENT_NET_SOCKET" ] || ! kill -0 "$network_pid" 2>/dev/null; then
+    break
+  fi
+  sleep 0.1
+done
+if [ ! -S "$AGENT_NET_SOCKET" ]; then
+  echo "Filtered VM network did not start (pasta, routing rules or passt)" >&2
+  exit 1
 fi
 
 export AUTH_VM_BOOTSTRAP_DIR="$auth_bootstrap_dir"

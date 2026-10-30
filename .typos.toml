@@ -6,3 +6,4 @@ extend-ignore-re = [
 
 [default.extend-words]
 Hashi = "Hashi"
+passt = "passt"

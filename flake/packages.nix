@@ -67,6 +67,8 @@ forAllSystems (
           pkgs.util-linux
           pkgs.jq
           pkgs.nix
+          pkgs.passt
+          pkgs.iproute2
           (import ./packages.nix { inherit forAllSystems mkPkgs; }).${system}.dotflake-agent
         ];
         text = builtins.replaceStrings (map (name: "@${name}@") (

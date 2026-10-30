@@ -233,8 +233,12 @@ dotflake-agent discard --refs
 `discard` requires the instance to be stopped and asks you to type its name;
 `--refs` also removes its imported tracking refs. State lives under
 `${XDG_STATE_HOME:-$HOME/.local/state}/dotflake/agents/`.
-The guest still has network access to the host and LAN. Merged flakes, `.envrc`,
-hooks and CI can run code on the host, which is why `review` highlights them.
+The guest reaches only the internet. Its traffic leaves through pasta and passt
+in a host network namespace that blocks host, LAN, VPN/Tailscale, loopback,
+link-local and multicast addresses, apart from DNS to the host's resolvers.
+Host addresses and directly connected networks are read at launch.
+No ports are forwarded, and root in the guest cannot change this. Merged flakes, `.envrc`, hooks and CI can run code on the host, which is why
+`review` highlights them.
 
 ## Standalone Home Manager (Ubuntu and similar)
 

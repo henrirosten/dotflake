@@ -6,6 +6,10 @@
 { lib, pkgs, ... }:
 {
   virtualisation = {
+    qemu.networkingOptions = lib.mkForce [
+      "-net nic,netdev=agent,model=virtio"
+      ''-netdev stream,id=agent,addr.type=unix,addr.path="$AGENT_NET_SOCKET"''
+    ];
     qemu.options = [
       ''-virtfs local,path="$AUTH_VM_BOOTSTRAP_DIR",mount_tag=auth-bootstrap,security_model=none,readonly=on''
       ''-virtfs local,path="$AGENT_INBOX",mount_tag=agent-inbox,security_model=none,readonly=on''
