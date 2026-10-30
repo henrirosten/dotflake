@@ -112,7 +112,20 @@
         inherit
           forAllSystems
           mkPkgs
+          agentVms
           ;
+        agentSystem = nixosConfigurations.generic.pkgs.stdenv.hostPlatform.system;
+      };
+
+      agentVms = import ./flake/apps-vm.nix {
+        inherit
+          inputs
+          forAllSystems
+          mkPkgs
+          nixosConfigurations
+          ;
+        agentMode = true;
+        guestPackages = packages;
       };
 
       checks = import ./flake/checks.nix {

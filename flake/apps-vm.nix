@@ -3,6 +3,8 @@
   forAllSystems,
   mkPkgs,
   nixosConfigurations,
+  agentMode ? false,
+  guestPackages ? { },
 }:
 forAllSystems (
   system:
@@ -13,15 +15,28 @@ forAllSystems (
     username = hrosten.user.username;
     homeDir = hrosten.user.homedir;
     sameSystemNixosConfigurations = lib.filterAttrs (
-      _: nixosConfig: nixosConfig.pkgs.stdenv.hostPlatform.system == system
+      name: nixosConfig:
+      nixosConfig.pkgs.stdenv.hostPlatform.system == system && (!agentMode || name == "generic")
     ) nixosConfigurations;
   in
   lib.mapAttrs' (
     name: nixosConfig:
     let
       isGeneric = name == "generic";
-      vcpus = if isGeneric then 4 else 1;
-      ramGb = if isGeneric then 16 else 1;
+      vcpus =
+        if agentMode then
+          2
+        else if isGeneric then
+          4
+        else
+          1;
+      ramGb =
+        if agentMode then
+          8
+        else if isGeneric then
+          16
+        else
+          1;
       diskGb = if isGeneric then 100 else 8;
       vmConfig = nixosConfig.extendModules {
         modules = [
@@ -31,7 +46,7 @@ forAllSystems (
               {
                 virtualisation.vmVariant = {
                   virtualisation = {
-                    graphics = lib.mkForce true;
+                    graphics = lib.mkForce (!agentMode);
                     cores = lib.mkForce vcpus;
                     memorySize = lib.mkForce (ramGb * 1024);
                     diskSize = lib.mkForce (diskGb * 1024);
@@ -40,7 +55,7 @@ forAllSystems (
                     mountHostNixStore = lib.mkForce true;
                     writableStoreUseTmpfs = lib.mkForce false;
                     restrictNetwork = lib.mkForce false;
-                    forwardPorts = [
+                    forwardPorts = lib.optionals (!agentMode) [
                       {
                         from = "host";
                         host.address = "127.0.0.1";
@@ -52,9 +67,11 @@ forAllSystems (
                     # In-process 9p needs no shared-memory backend.
                     qemu.enableSharedMemory = lib.mkForce false;
                     qemu.options = lib.mkAfter (
-                      [
+                      lib.optionals (!agentMode) [
                         "-display none"
                         "-serial mon:stdio"
+                      ]
+                      ++ [
                         "-device virtio-balloon"
                         "-enable-kvm"
                         # Ask QEMU to self-restrict host-side capabilities.
@@ -63,7 +80,7 @@ forAllSystems (
                         # exhaust its guest FD budget. QEMU's 9p server reclaims FDs.
                         "-virtfs local,path=${builtins.storeDir},mount_tag=nix-store,security_model=none,readonly=on"
                       ]
-                      ++ lib.optionals isGeneric [
+                      ++ lib.optionals (isGeneric && !agentMode) [
                         # Enforce read-only on the host, including for guest root.
                         ''-virtfs local,path="''${AUTH_VM_BOOTSTRAP_DIR:-$TMPDIR/xchg}",mount_tag=auth-bootstrap,security_model=none,readonly=on''
                       ]
@@ -82,7 +99,7 @@ forAllSystems (
                           "ro"
                         ];
                       };
-                    } // lib.optionalAttrs isGeneric {
+                    } // lib.optionalAttrs (isGeneric && !agentMode) {
                       "/mnt/auth-bootstrap" = {
                         device = "auth-bootstrap";
                         fsType = "9p";
@@ -104,8 +121,6 @@ forAllSystems (
                 # The VM runs with `-display none` so tty1 is unused. Disable its
                 # autovt to avoid a lastlog2.db lock race with the ttyS0 autologin.
                 systemd.services."autovt@tty1".enable = lib.mkForce false;
-                services.openssh.settings.X11Forwarding = lib.mkForce true;
-                programs.ssh.setXAuthLocation = lib.mkForce true;
                 # Keep VM boot logs deterministic for CI/smoke runs: auditd emits
                 # spurious startup errors in these ephemeral QEMU guests and we do
                 # not rely on kernel audit trails inside test VMs.
@@ -123,6 +138,21 @@ forAllSystems (
                   min-free = lib.mkForce (128 * 1024 * 1024);
                   max-free = lib.mkForce (512 * 1024 * 1024);
                 };
+                home-manager.users.${username} = {
+                  programs.starship.settings = {
+                    format = lib.mkForce "\${custom.vm_indicator}$all";
+                    custom.vm_indicator = {
+                      when = true;
+                      command = "echo vm";
+                      format = "[[$output](bold yellow)]($style) ";
+                      style = "bold yellow";
+                    };
+                  };
+                };
+              }
+              (lib.optionalAttrs (!agentMode) {
+                services.openssh.settings.X11Forwarding = lib.mkForce true;
+                programs.ssh.setXAuthLocation = lib.mkForce true;
                 systemd.tmpfiles.rules = [
                   "d /mnt/host-share 0755 ${username} users -"
                 ]
@@ -272,18 +302,9 @@ forAllSystems (
                         "sops/age/keys.txt" \
                         ".config/sops/age/keys.txt"
                     '';
-                    programs.starship.settings = {
-                      format = lib.mkForce "\${custom.vm_indicator}$all";
-                      custom.vm_indicator = {
-                        when = true;
-                        command = "echo vm";
-                        format = "[[$output](bold yellow)]($style) ";
-                        style = "bold yellow";
-                      };
-                    };
                   };
-              }
-              (lib.optionalAttrs isGeneric {
+              })
+              (lib.optionalAttrs (isGeneric && !agentMode) {
                 systemd.services.auth-bootstrap = {
                   description = "Copy auth credentials from bootstrap share";
                   after = [ "local-fs.target" ];
@@ -334,7 +355,13 @@ forAllSystems (
               })
             ]
           )
-        ];
+        ]
+        ++ lib.optional agentMode {
+          virtualisation.vmVariant = import ./agent-vm.nix {
+            inherit username homeDir;
+            guestPackage = guestPackages.${system}.dotflake-agent-guest;
+          };
+        };
       };
       vmRunner = "${vmConfig.config.virtualisation.vmVariant.system.build.vm}/bin/run-${name}-vm";
       vmAppRunner = pkgs.replaceVarsWith {
@@ -357,12 +384,17 @@ forAllSystems (
         };
       };
     in
-    lib.nameValuePair "${name}-vm" {
-      type = "app";
-      program = "${vmAppRunner}/bin/run-${name}-vm";
-      meta = {
-        description = "Run ${name} VM - 'nix run .#${name}-vm -- --help'";
-      };
-    }
+    lib.nameValuePair "${name}-vm" (
+      if agentMode then
+        vmConfig.config.virtualisation.vmVariant.system.build.vm
+      else
+        {
+          type = "app";
+          program = "${vmAppRunner}/bin/run-${name}-vm";
+          meta = {
+            description = "Run ${name} VM - 'nix run .#${name}-vm -- --help'";
+          };
+        }
+    )
   ) sameSystemNixosConfigurations
 )

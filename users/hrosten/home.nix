@@ -7,6 +7,10 @@
 }:
 let
   user = (import ./hrosten.nix).user;
+  agentPackages = import ../../flake/packages.nix {
+    forAllSystems = pkgs.lib.genAttrs [ pkgs.stdenv.hostPlatform.system ];
+    mkPkgs = _: pkgs;
+  };
 in
 {
   imports = [
@@ -29,6 +33,7 @@ in
     homeDirectory = user.homedir;
     packages = with pkgs; [
       bat
+      agentPackages.${pkgs.stdenv.hostPlatform.system}.dotflake-agent
       cantarell-fonts
       inputs.nix-claude-code.packages.${pkgs.stdenv.hostPlatform.system}.default
       csvkit

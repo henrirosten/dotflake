@@ -16,7 +16,7 @@ import sys
 import tempfile
 
 sys.path.insert(0, "@modulePath@")
-from dotflake_agent_state import instance_lock, instance_running, state_root
+from dotflake_agent_state import instance_lock, instance_lock_path, instance_running, state_root
 
 
 GIT = "@git@"
@@ -467,6 +467,7 @@ def main():
     review_parser = subcommands.add_parser("review", help="show the exact commits and changes to review")
     review_parser.add_argument("ref", nargs="?", default="wip", help="wip, heads/<branch>, or a full instance ref")
     subcommands.add_parser("list", help="list all projects and instances")
+    subcommands.add_parser("paths", help="create the instance layout and print its paths as JSON")
     discard_parser = subcommands.add_parser("discard", help="delete a stopped instance")
     discard_parser.add_argument("--refs", action="store_true", help="also delete this instance's tracking refs")
     discard_parser.add_argument("--yes", action="store_true", help="discard without interactive confirmation")
@@ -482,13 +483,18 @@ def main():
             return 0
         with tempfile.TemporaryDirectory(prefix="dotflake-agent-home-") as home:
             project = Project(Git(home), args.project, args.instance,
-                              create_instance=args.command in ("push", "import"))
+                              create_instance=args.command in ("push", "import", "paths"))
             if args.command == "push":
                 push(project, args.branch)
             elif args.command == "import":
                 import_bundle(project, args.max_bytes)
             elif args.command == "review":
                 review(project, args.ref)
+            elif args.command == "paths":
+                with project.locked():
+                    print(json.dumps({"directory": str(project.inbox.parent),
+                                      "lock": str(instance_lock_path(project.state, project.instance)),
+                                      "inbox": str(project.inbox), "outbox": str(project.outbox)}))
             else:
                 discard(project, args.refs, args.yes)
     except (AgentError, OSError) as error:
