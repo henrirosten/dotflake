@@ -1,6 +1,7 @@
 {
   inputs,
   outputs,
+  pkgs,
   stateVersion,
   ...
 }:
@@ -62,6 +63,9 @@ in
 
   services.avahi.enable = false;
   system.autoUpgrade.dates = "weekly";
+
+  # Agent VM launcher (see README); not in Home Manager, which the guest imports.
+  environment.systemPackages = [ outputs.packages.${pkgs.stdenv.hostPlatform.system}.dotflake-vm ];
 
   home-manager.extraSpecialArgs = {
     inherit

@@ -18,7 +18,9 @@ forAllSystems (
         inputs
         stateVersion
         ;
-      outputs = moduleOutputs;
+      outputs = moduleOutputs // {
+        inherit packages;
+      };
     };
   in
   {

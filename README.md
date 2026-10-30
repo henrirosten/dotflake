@@ -161,6 +161,18 @@ guest fetches it into `host/<branch>` at boot without changing its own branches.
 The instance keeps its home directory and `/work` across restarts.
 Named instances let several agents work on the same project side by side.
 
+`dotflake-agent` comes with the Home Manager profile. The x1 host configuration
+installs the `dotflake-vm` launcher; elsewhere, run it from a dotflake checkout:
+
+```bash
+# Defaults, and the options that change them:
+#   project:     the Git repository you start in (--project PATH), default: CWD
+#   instance:    default (--instance NAME)
+#   resources:   8192 MiB RAM, 2 vCPUs (--ram-mb MB, --cpus N)
+#   credentials: none (--auth PROVIDER[=FILE], repeatable)
+nix run .#dotflake-vm
+```
+
 The launcher is not in Home Manager because it depends on a VM that itself
 uses the Home Manager profile; including it there would create a dependency cycle.
 
