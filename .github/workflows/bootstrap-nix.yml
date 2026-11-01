@@ -8,6 +8,7 @@ on:
       - ".github/workflows/bootstrap-nix.yml"
       - "flake.nix"
       - "flake.lock"
+      - "flake/**"
       - "modules/home/**"
       - "users/**"
 
@@ -73,6 +74,11 @@ jobs:
             echo "bootstrap-nix.sh failed"
             exit 1
           fi
+
+      - name: Configure agent binary cache
+        run: |
+          mkdir -p "$HOME/.config/nix"
+          cat flake/agent-cache.conf >> "$HOME/.config/nix/nix.conf"
 
       - name: Enable Magic Nix Cache
         id: magic_nix_cache

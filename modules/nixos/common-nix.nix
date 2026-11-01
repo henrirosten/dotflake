@@ -19,6 +19,7 @@ in
   };
 
   nix = {
+    extraOptions = builtins.readFile ../../flake/agent-cache.conf;
     settings = {
       experimental-features = [
         "nix-command"
@@ -78,11 +79,6 @@ in
       }
     ];
   };
-  systemd.tmpfiles.rules = [
-    # Codex currently hardcodes /usr/bin/bwrap on Linux.
-    "L+ /usr/bin/bwrap - - - - ${pkgs.bubblewrap}/bin/bwrap"
-  ];
-
   programs.zsh.enable = true;
   environment = {
     pathsToLink = [ "/share/zsh" ];

@@ -22,20 +22,13 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    codex-cli-nix = {
-      url = "github:sadjow/codex-cli-nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     sbomnix = {
       url = "github:tiiuae/sbomnix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    nix-claude-code = {
-      url = "github:ryoppippi/nix-claude-code";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    # Keep the upstream nixpkgs pin to use the dependency versions tested in CI.
+    llm-agents.url = "github:numtide/llm-agents.nix";
 
     sops-nix = {
       url = "github:Mic92/sops-nix";

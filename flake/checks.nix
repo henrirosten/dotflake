@@ -13,6 +13,7 @@ forAllSystems (
   let
     lib = inputs.nixpkgs.lib;
     pkgs = mkPkgs system;
+    agentCliPackages = import ./llm-agents.nix { inherit inputs system; };
     testSpecialArgs = {
       inherit
         inputs
@@ -50,29 +51,23 @@ forAllSystems (
       # Avoid colliding with runNixOSTest's implicit single-node `machine`
       # alias when nixpkgs type-checks the generated Python test script.
       nodes.x1 =
-        { lib, pkgs, ... }:
+        { lib, ... }:
         {
           imports = [ ../hosts/x1/configuration.nix ];
           services.getty.autologinUser = lib.mkForce "root";
           # Keep VM tests fast and deterministic by avoiding HM profile activation.
           systemd.services."home-manager-hrosten".enable = lib.mkForce false;
-          environment.systemPackages = lib.mkAfter [
-            inputs.codex-cli-nix.packages.${system}.default
-            inputs.nix-claude-code.packages.${system}.default
-            pkgs.github-copilot-cli
-          ];
+          environment.systemPackages = lib.mkAfter agentCliPackages;
         };
       testScript = ''
         start_all()
         x1.wait_for_unit("default.target")
         x1.wait_until_succeeds("systemctl is-system-running --wait | grep -qx running")
         x1.succeed("test -z \"$(systemctl --failed --plain --no-legend)\"")
-        x1.succeed("command -v codex")
-        x1.succeed("codex --help >/dev/null 2>&1 || codex-cli --help >/dev/null 2>&1")
-        x1.succeed("command -v claude")
-        x1.succeed("claude --version")
-        x1.succeed("command -v copilot")
-        x1.succeed("copilot --version")
+        ${lib.concatMapStringsSep "\n" (package: ''
+          x1.succeed("command -v ${package.meta.mainProgram}")
+          x1.succeed("${package.meta.mainProgram} --version")
+        '') agentCliPackages}
       '';
     };
   }

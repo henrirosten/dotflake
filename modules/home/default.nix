@@ -3,6 +3,7 @@
   codex-cli = import ./codex-cli.nix;
   gui-extras = import ./gui-extras.nix;
   git = import ./git.nix;
+  llm-agents = import ./llm-agents.nix;
   shell-common = import ./shell-common.nix;
   ssh-conf = import ./ssh-conf.nix;
   starship = import ./starship.nix;

@@ -216,6 +216,8 @@ print a note and continue. Use a file to select another account (`~/` expands to
 dotflake-vm --instance personal --auth codex=~/.codex-personal/auth.json
 ```
 
+Gemini has no `--auth` support; set `GEMINI_API_KEY` inside the guest instead.
+
 Copilot files contain a token, exported as `COPILOT_GITHUB_TOKEN` in the guest.
 Use a fine-grained PAT with only **Copilot Requests** permission. Store it with
 `nix shell nixpkgs#libsecret -c secret-tool store --label='Copilot CLI' service copilot-cli`.
@@ -258,6 +260,23 @@ Apply profile:
 ```bash
 nix-shell
 home-manager switch --flake .#hrosten
+```
+
+## Coding Agent CLIs
+
+`modules/home/llm-agents.nix` installs Codex, Claude Code, GitHub Copilot CLI,
+and Gemini CLI from [`numtide/llm-agents.nix`](https://github.com/numtide/llm-agents.nix).
+Dependabot bumps it with the other flake inputs; to update only the agents, run
+`nix flake update llm-agents`.
+
+Prebuilt agents come from the Numtide cache in `flake/agent-cache.conf`. If a
+NixOS host doesn't have the cache configured yet, load it for the first switch
+so Codex isn't compiled from source (`nix-shell` already does this for
+standalone Home Manager):
+
+```bash
+export NIX_CONFIG="$(cat flake/agent-cache.conf)"
+sudo --preserve-env=NIX_CONFIG nixos-rebuild switch --flake .#<host>
 ```
 
 ## VPN

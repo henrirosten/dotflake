@@ -678,7 +678,7 @@ CVE-2023-6992,True,zlib,1.3.2,,1.3.2,1.3.2,False positive: scanner triage classi
 CVE-2026-22184,True,zlib,0.7.1.1,,0.7.1.1,0.7.1.1,"Incorrect package / no target impact: scanned row is Haskell zlib 0.7.1.1; CVE concerns contrib/untgz, not the core compression library."
 CVE-2026-27820,True,zlib,0.7.1.1,,0.7.1.1,0.7.1.1,"Incorrect package: CVE affects Ruby's zlib extension; scanned row is C zlib or Haskell zlib, not Ruby zlib."
 CVE-2026-27820,True,zlib,1.3.2,,1.3.2,1.3.2,"Incorrect package: CVE affects Ruby's zlib extension; scanned row is C zlib or Haskell zlib, not Ruby zlib."
-CVE-2021-43635,True,codex,0.146.0,,,,Incorrect package: CVE affects jcv8000/Codex notes app via Notebook/Page name field; scanned component is OpenAI Codex CLI from codex-cli-nix.
+CVE-2021-43635,True,codex,,[0-9]+\.[0-9]+\.[0-9]+,,,Incorrect package: CVE affects jcv8000/Codex notes app via Notebook/Page name field; scanned component is OpenAI Codex CLI from numtide/llm-agents.nix.
 CVE-2024-21485,True,dash,0.5.13.4,,,,Incorrect package: CVE affects Plotly/Python Dash and dash-core/html components; scanned component is the dash POSIX shell for x86_64-linux.
 CVE-2023-28115,True,snappy,1.2.2,,,,Incorrect package: CVE affects KnpLabs/knp-snappy PHP library; scanned component is Google Snappy compression library 1.2.2.
 CVE-2023-41330,True,snappy,1.2.2,,,,Incorrect package: CVE affects KnpLabs/knp-snappy PHP library; scanned component is Google Snappy compression library 1.2.2.
@@ -779,7 +779,6 @@ CVE-2025-25468,True,ffmpeg,,8\.1\.2|9\.0,,,Referenced upstream fix commit d5873b
 CVE-2025-25469,True,ffmpeg,,8\.1\.2|9\.0,,,Referenced upstream fix commit d5873be is present in both local FFmpeg release sources.
 CVE-2024-38517,True,rapidjson,1.1.0-unstable-2025-02-05,,,,Referenced RapidJSON fix commit 8269bc2 is present in the local source.
 CVE-2024-3220,True,python3,3.13.15,,,,Windows-only mimetypes path issue; target is x86_64-linux and Nixpkgs rewrites knownfiles to the Nix store MIME database.
-CVE-2021-43635,True,codex,0.149.0,,,,Incorrect package: CVE affects jcv8000/Codex notes app via Notebook/Page name field; scanned component is OpenAI Codex CLI from codex-cli-nix.
 CVE-2021-3982,True,gnome-shell,50.4,,,,Target-specific false positive: NVD limits impact to distributions granting CAP_SYS_NICE to gnome-shell; this Nix store output has no file capability.
 CVE-2020-24490,True,bluez,5.87,,,,NVD requires old vulnerable Linux kernel ranges; this target uses linux 6.18.45 outside the affected kernel ranges.
 CVE-2011-2411,True,samba,4.23.10,,,,Target mismatch: NVD record is for HP NonStop Servers using Samba; scanned package is Nixpkgs Samba on x86_64-linux.

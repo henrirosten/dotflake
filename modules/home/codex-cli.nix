@@ -4,7 +4,8 @@
   ...
 }:
 {
+  # Compatibility entrypoint for consumers that only want Codex.
   home.packages = [
-    inputs.codex-cli-nix.packages.${pkgs.stdenv.hostPlatform.system}.default
+    inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.codex
   ];
 }

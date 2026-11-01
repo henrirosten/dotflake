@@ -29,6 +29,10 @@ jobs:
           install_options: --no-daemon
           extra_nix_config: |
             extra-trusted-substituters = http://127.0.0.1
+      - name: Configure agent binary cache
+        run: |
+          mkdir -p "$HOME/.config/nix"
+          cat flake/agent-cache.conf >> "$HOME/.config/nix/nix.conf"
       - name: Enable Magic Nix Cache
         uses: DeterminateSystems/magic-nix-cache-action@55718cd9ebf1737a061487d5ada21abf31e99a98 # main@2026-04-15 (node24)
         with:
@@ -58,6 +62,10 @@ jobs:
           install_options: --no-daemon
           extra_nix_config: |
             extra-trusted-substituters = http://127.0.0.1
+      - name: Configure agent binary cache
+        run: |
+          mkdir -p "$HOME/.config/nix"
+          cat flake/agent-cache.conf >> "$HOME/.config/nix/nix.conf"
       - name: Enable Magic Nix Cache
         uses: DeterminateSystems/magic-nix-cache-action@55718cd9ebf1737a061487d5ada21abf31e99a98 # main@2026-04-15 (node24)
         with:
@@ -105,6 +113,10 @@ jobs:
           install_options: --no-daemon
           extra_nix_config: |
             extra-trusted-substituters = http://127.0.0.1
+      - name: Configure agent binary cache
+        run: |
+          mkdir -p "$HOME/.config/nix"
+          cat flake/agent-cache.conf >> "$HOME/.config/nix/nix.conf"
       - name: Enable Magic Nix Cache
         uses: DeterminateSystems/magic-nix-cache-action@55718cd9ebf1737a061487d5ada21abf31e99a98 # main@2026-04-15 (node24)
         with:

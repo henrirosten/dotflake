@@ -15,8 +15,8 @@ in
 {
   imports = [
     outputs.homeModules.bash
-    outputs.homeModules.codex-cli
     (outputs.homeModules.git { inherit user; })
+    outputs.homeModules.llm-agents
     outputs.homeModules.ssh-conf
     outputs.homeModules.starship
     outputs.homeModules.vpn
@@ -35,13 +35,11 @@ in
       bat
       agentPackages.${pkgs.stdenv.hostPlatform.system}.dotflake-agent
       cantarell-fonts
-      inputs.nix-claude-code.packages.${pkgs.stdenv.hostPlatform.system}.default
       csvkit
       curl
       dig.dnsutils
       file
       gh
-      github-copilot-cli
       htop
       jq
       net-tools
@@ -85,5 +83,6 @@ in
   xdg.configFile."nix/nix.conf".text = ''
     substituters = https://cache.nixos.org/
     trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
-  '';
+  ''
+  + builtins.readFile ../../flake/agent-cache.conf;
 }

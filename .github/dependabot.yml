@@ -18,5 +18,6 @@ updates:
       default-days: 0
     groups:
       nix-flake-inputs:
+        # Covers all flake.lock inputs, including llm-agents.
         patterns:
           - "*"

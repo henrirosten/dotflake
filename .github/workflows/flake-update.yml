@@ -6,6 +6,7 @@ on:
     paths:
       - "flake.nix"
       - "flake.lock"
+      - "flake/**"
       - ".github/workflows/flake-update.yml"
 
 concurrency:
@@ -38,10 +39,15 @@ jobs:
             experimental-features = nix-command flakes
             system-features = nixos-test benchmark big-parallel kvm
 
+      - name: Configure agent binary cache
+        run: |
+          mkdir -p "$HOME/.config/nix"
+          cat flake/agent-cache.conf >> "$HOME/.config/nix/nix.conf"
+
       - name: Enable Magic Nix Cache
         uses: DeterminateSystems/magic-nix-cache-action@55718cd9ebf1737a061487d5ada21abf31e99a98 # main@2026-04-15 (node24)
         with:
           use-flakehub: false
 
-      - name: Run x1 VM codex smoke check
+      - name: Run x1 VM agent smoke check
         run: nix build .#checks.x86_64-linux.x1-vm-smoke -L
