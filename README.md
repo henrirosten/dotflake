@@ -216,7 +216,7 @@ print a note and continue. Use a file to select another account (`~/` expands to
 dotflake-vm --instance personal --auth codex=~/.codex-personal/auth.json
 ```
 
-Gemini has no `--auth` support; set `GEMINI_API_KEY` inside the guest instead.
+The launcher's `--auth` option does not import Antigravity CLI credentials.
 
 Copilot files contain a token, exported as `COPILOT_GITHUB_TOKEN` in the guest.
 Use a fine-grained PAT with only **Copilot Requests** permission. Store it with
@@ -264,10 +264,21 @@ home-manager switch --flake .#hrosten
 
 ## Coding Agent CLIs
 
-`modules/home/llm-agents.nix` installs Codex, Claude Code, GitHub Copilot CLI,
-and Gemini CLI from [`numtide/llm-agents.nix`](https://github.com/numtide/llm-agents.nix).
+`modules/home/llm-agents.nix` installs Antigravity CLI, Codex, Claude Code, and
+GitHub Copilot CLI from [`numtide/llm-agents.nix`](https://github.com/numtide/llm-agents.nix).
 Dependabot bumps it with the other flake inputs; to update only the agents, run
 `nix flake update llm-agents`.
+
+After applying the NixOS or Home Manager configuration, start Antigravity CLI
+from your project directory and sign in with your Google account:
+
+```bash
+agy
+```
+
+Antigravity CLI replaces Gemini CLI in the installed package list because
+[Google ended Gemini CLI access for personal Google accounts](https://developers.google.com/gemini-code-assist/docs/deprecations/code-assist-individuals).
+Gemini CLI remains available upstream for API-based use.
 
 Prebuilt agents come from the Numtide cache in `flake/agent-cache.conf`. If a
 NixOS host doesn't have the cache configured yet, load it for the first switch
