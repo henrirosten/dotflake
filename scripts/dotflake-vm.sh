@@ -3,10 +3,12 @@ set -euo pipefail
 umask 077
 
 ram_mb=8192
-cpus=2
+cpus=@defaultCpus@
 project=.
-instance=default
-guest_exec=""
+instance=@defaultInstance@
+network=@defaultNetwork@
+backend=@backend@
+guest_exec="@defaultExec@"
 declare -A auth=()
 auth_replace=0
 instance_dir=""
@@ -19,14 +21,14 @@ agent_locked=0
 
 for variable in VM_HOST_SHARE_DIR VM_HOST_SHARE_DIRS NIX_DISK_IMAGE QEMU_OPTS; do
   if [[ -v $variable ]]; then
-    echo "$variable is not supported by dotflake-vm" >&2
+    echo "$variable is not supported by @launcherName@" >&2
     exit 2
   fi
 done
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
-  --project | --instance | --auth | --exec | --ram-mb | --cpus)
+  --project | --instance | --auth | --exec | --ram-mb | --cpus | --network)
     case "${2:-}" in
     "" | -*)
       echo "Invalid or missing value for $1" >&2
@@ -39,6 +41,7 @@ while [ "$#" -gt 0 ]; do
     --exec) guest_exec=$2 ;;
     --ram-mb) ram_mb=$2 ;;
     --cpus) cpus=$2 ;;
+    --network) network=$2 ;;
     --auth)
       provider=${2%%=*}
       case "$provider" in
@@ -58,9 +61,9 @@ while [ "$#" -gt 0 ]; do
     ;;
   --help | -h)
     cat <<'EOF'
-Usage: dotflake-vm [--instance NAME] [--project PATH] [OPTIONS]
+Usage: @launcherName@ [--instance NAME] [--project PATH] [OPTIONS]
   --instance NAME  Instance to start, created on first use
-                   (per project; default: default)
+                   (per project; default: @defaultInstance@)
   --project PATH   Git repository the agent works on
                    (default: the repository containing the current directory)
   --auth PROVIDER[=FILE]
@@ -68,20 +71,29 @@ Usage: dotflake-vm [--instance NAME] [--project PATH] [OPTIONS]
   --auth-replace   Replace existing guest credentials for selected providers
   --exec CMD       Run CMD on the console after boot
   --ram-mb MB      RAM in MiB (default: 8192)
-  --cpus N         Number of CPUs (default: 2)
+  --cpus N         Number of CPUs (default: @defaultCpus@)
+  --network MODE   offline: no network device; online: filtered internet
+                   (default: @defaultNetwork@)
 Each launch sends the project's current branch; the guest fetches it into
 host/<branch> at boot. The persistent data disk is 32 GiB. Shut down with
 sudo poweroff: Ctrl-A x skips the guest shutdown and can lose recent writes.
 Credentials persist until deleted in the guest or with dotflake-agent
 discard. Copilot bootstrap tokens live under /run.
-The guest reaches only the internet: the host blocks host, LAN, VPN,
-link-local and multicast addresses. No ports are forwarded.
+With --network online, the guest reaches only the internet: the host blocks
+host, LAN, VPN, link-local and multicast addresses. No ports are forwarded.
 Without FILE: codex uses ${CODEX_HOME:-$HOME/.codex}/auth.json;
 claude uses ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.credentials.json;
 copilot uses COPILOT_GITHUB_TOKEN, then the copilot-cli keyring entry.
 FILE may start with ~/ or name a pipe; Copilot files contain a token.
 For repeated providers, the last --auth wins. Missing defaults are skipped.
 EOF
+    if [ "$backend" = local ]; then
+      cat <<'EOF'
+This launcher runs local-agent (Pi with a local Qwen3.5-4B) unless --exec is
+given. It rejects --auth and --auth-replace, and dotflake-vm cannot use its
+instances.
+EOF
+    fi
     exit 0
     ;;
   *)
@@ -93,6 +105,17 @@ done
 
 if ! [[ $ram_mb =~ ^[1-9][0-9]*$ && $cpus =~ ^[1-9][0-9]*$ ]]; then
   echo "RAM and CPU counts must be positive integers" >&2
+  exit 2
+fi
+case "$network" in
+online | offline) ;;
+*)
+  echo "--network must be online or offline" >&2
+  exit 2
+  ;;
+esac
+if [[ $backend == local && (${#auth[@]} -gt 0 || $auth_replace -eq 1) ]]; then
+  echo "@launcherName@ does not import credentials; omit --auth and --auth-replace" >&2
   exit 2
 fi
 
@@ -161,6 +184,19 @@ AGENT_OUTBOX=$(jq -r .outbox <<<"$layout")
 AGENT_DATA_IMAGE="$instance_dir/data.qcow2"
 # discard can win between resolving paths and taking the permanent lock.
 mkdir -p -- "$AGENT_INBOX" "$AGENT_OUTBOX"
+# Legacy instances belong to the cloud launcher and may contain credentials.
+# Keep local instances separate even when the caller explicitly picks a name.
+previous_backend=$backend
+if [ -f "$instance_dir/backend" ]; then
+  previous_backend=$(cat "$instance_dir/backend")
+elif [ -f "$AGENT_DATA_IMAGE" ]; then
+  previous_backend=cloud
+fi
+if [ "$previous_backend" != "$backend" ]; then
+  echo "Instance '$instance' belongs to the $previous_backend backend; choose another --instance" >&2
+  exit 2
+fi
+printf '%s\n' "$backend" >"$instance_dir/backend"
 rm -f -- "$instance_dir/gcroot" "$disk_image" "$instance_dir/.data.tmp"
 rm -rf -- "$instance_dir/auth-bootstrap"
 # Send the current branch on every launch; the guest fetches it at boot.
@@ -223,45 +259,46 @@ if [ -n "$guest_exec" ]; then
   } >"$auth_bootstrap_dir/exec-command"
 fi
 
-# passt hands these resolvers to the guest, and the namespace allows only DNS
-# to them. Loopback stubs and link-local resolvers are unreachable there, so
-# prefer systemd-resolved's upstream list and skip them.
-resolv=/etc/resolv.conf
-[ ! -r /run/systemd/resolve/resolv.conf ] || resolv=/run/systemd/resolve/resolv.conf
-dns_servers=()
-while read -r key server _; do
-  case "$key:$server" in
-  nameserver:127.* | nameserver:::1 | nameserver:fe80:* | nameserver:*%*) ;;
-  nameserver:?*) dns_servers+=("$server") ;;
-  esac
-done <"$resolv"
-if [ "${#dns_servers[@]}" -eq 0 ]; then
-  echo "No usable DNS server in $resolv; the filtered VM network needs a non-loopback resolver" >&2
-  exit 1
-fi
+if [ "$network" = online ]; then
+  # passt hands these resolvers to the guest, and the namespace allows only DNS
+  # to them. Loopback stubs and link-local resolvers are unreachable there, so
+  # prefer systemd-resolved's upstream list and skip them.
+  resolv=/etc/resolv.conf
+  [ ! -r /run/systemd/resolve/resolv.conf ] || resolv=/run/systemd/resolve/resolv.conf
+  dns_servers=()
+  while read -r key server _; do
+    case "$key:$server" in
+    nameserver:127.* | nameserver:::1 | nameserver:fe80:* | nameserver:*%*) ;;
+    nameserver:?*) dns_servers+=("$server") ;;
+    esac
+  done <"$resolv"
+  if [ "${#dns_servers[@]}" -eq 0 ]; then
+    echo "No usable DNS server in $resolv; the filtered VM network needs a non-loopback resolver" >&2
+    exit 1
+  fi
 
-# Block private and special ranges, plus the host's own addresses and directly
-# connected networks, which can be public (especially with IPv6). `ip rule add`
-# rejects duplicates, so normalize and deduplicate.
-mapfile -t blocked < <(
-  {
-    printf '"%s"\n' 0.0.0.0/8 10.0.0.0/8 100.64.0.0/10 127.0.0.0/8 169.254.0.0/16 \
-      172.16.0.0/12 192.168.0.0/16 224.0.0.0/4 240.0.0.0/4 ::1/128 fc00::/7 fe80::/10 ff00::/8
-    ip -j address show | jq '.[].addr_info[].local'
-    for family in -4 -6; do
-      ip -j "$family" route show | jq '.[] | select(.gateway == null and .dst != "default") | .dst'
-    done
-  } | jq -r 'if test("/") then . elif test(":") then . + "/128" else . + "/32" end' | sort -u
-)
+  # Block private and special ranges, plus the host's own addresses and directly
+  # connected networks, which can be public (especially with IPv6). `ip rule add`
+  # rejects duplicates, so normalize and deduplicate.
+  mapfile -t blocked < <(
+    {
+      printf '"%s"\n' 0.0.0.0/8 10.0.0.0/8 100.64.0.0/10 127.0.0.0/8 169.254.0.0/16 \
+        172.16.0.0/12 192.168.0.0/16 224.0.0.0/4 240.0.0.0/4 ::1/128 fc00::/7 fe80::/10 ff00::/8
+      ip -j address show | jq '.[].addr_info[].local'
+      for family in -4 -6; do
+        ip -j "$family" route show | jq '.[] | select(.gateway == null and .dst != "default") | .dst'
+      done
+    } | jq -r 'if test("/") then . elif test(":") then . + "/128" else . + "/32" end' | sort -u
+  )
 
-network_dir=$(@mktemp@ -d "${XDG_RUNTIME_DIR:-/tmp}/df-net.XXXXXX")
-export AGENT_NET_SOCKET="$network_dir/net.sock"
-# A separate process group lets cleanup stop both pasta and passt. Close the
-# instance lock before creating any network children, including on failure.
-# Expand the script in the namespace, not in the launcher.
-# shellcheck disable=SC2016
-setsid pasta --config-net -t none -u none -T none -U none --no-map-gw -q -- \
-  bash -euo pipefail -c '
+  network_dir=$(@mktemp@ -d "${XDG_RUNTIME_DIR:-/tmp}/df-net.XXXXXX")
+  export AGENT_NET_SOCKET="$network_dir/net.sock"
+  # A separate process group lets cleanup stop both pasta and passt. Close the
+  # instance lock before creating any network children, including on failure.
+  # Expand the script in the namespace, not in the launcher.
+  # shellcheck disable=SC2016
+  setsid pasta --config-net -t none -u none -T none -U none --no-map-gw -q -- \
+    bash -euo pipefail -c '
     socket=$1 dns_count=$2
     shift 2
     dns_options=()
@@ -280,22 +317,33 @@ setsid pasta --config-net -t none -u none -T none -U none --no-map-gw -q -- \
     done
     exec passt -f -q -t none -u none --no-map-gw -s "$socket" "${dns_options[@]}"
   ' dotflake-vm-network "$AGENT_NET_SOCKET" "${#dns_servers[@]}" "${dns_servers[@]}" \
-  "${blocked[@]}" 9>&- </dev/null &
-network_pid=$!
-for _ in {1..100}; do
-  if [ -S "$AGENT_NET_SOCKET" ] || ! kill -0 "$network_pid" 2>/dev/null; then
-    break
+    "${blocked[@]}" 9>&- </dev/null &
+  network_pid=$!
+  for _ in {1..100}; do
+    if [ -S "$AGENT_NET_SOCKET" ] || ! kill -0 "$network_pid" 2>/dev/null; then
+      break
+    fi
+    sleep 0.1
+  done
+  if [ ! -S "$AGENT_NET_SOCKET" ]; then
+    echo "Filtered VM network did not start (pasta, routing rules or passt)" >&2
+    exit 1
   fi
-  sleep 0.1
-done
-if [ ! -S "$AGENT_NET_SOCKET" ]; then
-  echo "Filtered VM network did not start (pasta, routing rules or passt)" >&2
-  exit 1
 fi
 
 export AUTH_VM_BOOTSTRAP_DIR="$auth_bootstrap_dir"
 export NIX_DISK_IMAGE="$disk_image"
 export QEMU_OPTS="-m $ram_mb -smp $cpus"
+if [ "$network" = offline ]; then
+  QEMU_OPTS+=" -nic none"
+else
+  # QEMU_OPTS is split into arguments by the generated NixOS runner.
+  if [[ $AGENT_NET_SOCKET == *[[:space:],]* ]]; then
+    echo "The network socket path must not contain whitespace or commas" >&2
+    exit 2
+  fi
+  QEMU_OPTS+=" -net nic,netdev=agent,model=virtio -netdev stream,id=agent,addr.type=unix,addr.path=$AGENT_NET_SOCKET"
+fi
 "@vmRunner@" <&0 &
 runner_pid=$!
 wait "$runner_pid"

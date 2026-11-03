@@ -4,6 +4,7 @@
   mkPkgs,
   nixosConfigurations,
   agentMode ? false,
+  localModel ? false,
   guestPackages ? { },
 }:
 forAllSystems (
@@ -24,7 +25,9 @@ forAllSystems (
     let
       isGeneric = name == "generic";
       vcpus =
-        if agentMode then
+        if localModel then
+          4
+        else if agentMode then
           2
         else if isGeneric then
           4
@@ -287,8 +290,13 @@ forAllSystems (
         ]
         ++ lib.optional agentMode {
           virtualisation.vmVariant = import ./agent-vm.nix {
-            inherit username homeDir;
+            inherit username homeDir localModel;
             guestPackage = guestPackages.${system}.dotflake-agent-guest;
+          };
+        }
+        ++ lib.optional localModel {
+          virtualisation.vmVariant = import ./local-agent-vm.nix {
+            agentPackage = inputs.llm-agents.packages.${system}.pi;
           };
         };
       };

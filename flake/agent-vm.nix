@@ -2,14 +2,14 @@
   username,
   homeDir,
   guestPackage,
+  localModel ? false,
 }:
 { lib, pkgs, ... }:
 {
   virtualisation = {
-    qemu.networkingOptions = lib.mkForce [
-      "-net nic,netdev=agent,model=virtio"
-      ''-netdev stream,id=agent,addr.type=unix,addr.path="$AGENT_NET_SOCKET"''
-    ];
+    # Without any network option QEMU adds an unrestricted user-mode NIC.
+    # Fail closed; the launcher adds the filtered passt NIC in online mode.
+    qemu.networkingOptions = lib.mkForce [ "-nic none" ];
     qemu.options = [
       ''-virtfs local,path="$AUTH_VM_BOOTSTRAP_DIR",mount_tag=auth-bootstrap,security_model=none,readonly=on''
       ''-virtfs local,path="$AGENT_INBOX",mount_tag=agent-inbox,security_model=none,readonly=on''
@@ -124,7 +124,7 @@
   home-manager.users.${username}.programs = {
     starship.settings.custom.vm_indicator.command = lib.mkForce (
       pkgs.writeShellScript "vm-indicator" ''
-        printf vm
+        printf ${if localModel then "'vm local'" else "vm"}
         if [ -f "$HOME/.codex/auth.json" ]; then printf ' codex'; fi
         if [ -f "$HOME/.claude/.credentials.json" ]; then printf ' claude'; fi
         if [ -n "''${COPILOT_GITHUB_TOKEN:-}" ] || [ -r /run/vm-copilot/token ]; then

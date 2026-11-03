@@ -156,8 +156,11 @@ Notes:
 Run coding agents in a VM that never gets write access to a host checkout.
 Work comes back as Git commits that you review and merge by commit ID.
 The first launch clones the branch you start from into `/work` in the guest.
-No host directory is shared; each later launch sends the branch again, and the
-guest fetches it into `host/<branch>` at boot without changing its own branches.
+The host checkout is not shared. The guest can read the host's Nix store and the
+launcher's transfer directories; the only host directory it can write to is its
+export directory.
+Each later launch sends the branch again, and the guest fetches it into
+`host/<branch>` at boot without changing its own branches.
 The instance keeps its home directory and `/work` across restarts.
 Named instances let several agents work on the same project side by side.
 
@@ -242,6 +245,57 @@ Host addresses and directly connected networks are read at launch.
 No ports are forwarded, and root in the guest cannot change this. Merged flakes, `.envrc`, hooks and CI can run code on the host, which is why
 `review` highlights them.
 
+### Local Model Agent VM
+
+`dotflake-local-vm` runs the Pi coding agent with a Qwen3.5-4B model inside the
+VM, so prompts and code are not sent to a model provider. It uses the same
+export, import, and review workflow as `dotflake-vm`. By default it uses
+instance `local`, 8192 MiB RAM, and 4 vCPUs. It requires KVM. The model runs on
+the CPU with an 8192-token context, so it suits small, well-scoped tasks; a
+small edit can take a few minutes.
+
+Run these commands from the dotflake checkout:
+
+```bash
+# Once, while online: fetch the VM and the model (about 3.14 GB).
+nix build .#dotflake-local-vm
+# Start the agent; --offline also stops Nix from downloading.
+nix run --offline .#dotflake-local-vm
+```
+
+To work on another repository, append `-- --project /path/to/project` to `nix run`.
+
+By default the guest has no network device, so even guest root cannot reach the
+network, and builds and tests in the guest can use only what the VM includes.
+`--network online` gives the same filtered internet access as `dotflake-vm`;
+the model still runs locally. `dotflake-vm` also accepts `--network offline`.
+
+`local-agent` provides default VM guidance through Pi's agent-directory
+`APPEND_SYSTEM.md`: passwordless `sudo` is available for the task, the project
+is in `/work`, and network availability is inferred from the guest's default
+routes at startup. When a non-loopback interface exists, the launcher waits up
+to five seconds for a route. If none appears, the prompt says networking may
+still be starting. Offline guests without a network interface skip this wait.
+The generated default is refreshed on each launch. Existing user prompt files
+are preserved; a trusted project's `.pi/APPEND_SYSTEM.md` takes precedence over
+the agent-directory file, following Pi's normal behavior.
+
+The console starts Pi. Exit it for a shell (press Ctrl-C twice), then run
+`local-agent` to restart it or `local-agent --print 'Explain this project'` for a
+single request; `--exec bash` starts a shell instead. Run `agent-export` in the
+guest, then name the instance from the project repository on the host:
+
+```bash
+dotflake-agent import --instance local
+dotflake-agent review --instance local
+```
+
+The launcher rejects `--auth` and cannot use `dotflake-vm` instances, so it does
+not copy agent credentials into the guest. The current branch is still sent to
+the guest with its history, including any committed secrets. Pi sessions persist in
+`~/.local/share/dotflake/local-agent` in the guest. If Pi cannot reach the
+model, check `journalctl -u local-model`.
+
 ## Standalone Home Manager (Ubuntu and similar)
 
 Install Nix (automatic mode):
@@ -268,17 +322,6 @@ home-manager switch --flake .#hrosten
 GitHub Copilot CLI from [`numtide/llm-agents.nix`](https://github.com/numtide/llm-agents.nix).
 Dependabot bumps it with the other flake inputs; to update only the agents, run
 `nix flake update llm-agents`.
-
-After applying the NixOS or Home Manager configuration, start Antigravity CLI
-from your project directory and sign in with your Google account:
-
-```bash
-agy
-```
-
-Antigravity CLI replaces Gemini CLI in the installed package list because
-[Google ended Gemini CLI access for personal Google accounts](https://developers.google.com/gemini-code-assist/docs/deprecations/code-assist-individuals).
-Gemini CLI remains available upstream for API-based use.
 
 Prebuilt agents come from the Numtide cache in `flake/agent-cache.conf`. If a
 NixOS host doesn't have the cache configured yet, load it for the first switch

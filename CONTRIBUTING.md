@@ -4,7 +4,9 @@ Repository overview, host inventory, VM usage, and bootstrap steps live in `READ
 
 ## Scope
 
-This repository is check-driven. There is no standalone unit-test suite, so changes should be validated with formatting, linting, and relevant builds.
+This repository is check-driven. Validate changes with formatting, linting,
+and relevant builds. Flake checks include offline Python tests for the agent
+transport.
 
 ## Local Workflow
 
