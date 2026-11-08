@@ -1,13 +1,12 @@
-{ agentPackage }:
+{
+  agentPackage,
+  profile ? (import ./local-model-profiles.nix).laptop,
+}:
 { lib, pkgs, ... }:
 let
-  modelName = "qwen3.5-4b";
-  contextSize = 8192;
-  model = pkgs.fetchurl {
-    name = "Qwen3.5-4B-Q5_K_M.gguf";
-    url = "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/e87f176479d0855a907a41277aca2f8ee7a09523/Qwen3.5-4B-Q5_K_M.gguf";
-    sha256 = "8814232b85594dcd46c50e5b8b29324a7efe9e746edbe8a3d1df3d3fce7aad39";
-  };
+  inherit (profile) contextSize maxTokens;
+  modelName = lib.toLower profile.name;
+  model = pkgs.fetchurl profile.model;
   modelsConfig = pkgs.writeText "local-models.json" (
     builtins.toJSON {
       providers.dotflake = {
@@ -17,24 +16,18 @@ let
         models = [
           {
             id = modelName;
-            name = "Qwen3.5-4B (local Q5_K_M)";
+            name = "${profile.name} (local ${profile.quant})";
             reasoning = false;
             input = [ "text" ];
             contextWindow = contextSize;
-            maxTokens = 2048;
+            inherit maxTokens;
             cost = {
               input = 0;
               output = 0;
               cacheRead = 0;
               cacheWrite = 0;
             };
-            samplingParams = {
-              temperature = 0.7;
-              top_p = 0.8;
-              top_k = 20;
-              presence_penalty = 1.5;
-              chat_template_kwargs.enable_thinking = false;
-            };
+            inherit (profile) samplingParams;
           }
         ];
       };
@@ -46,10 +39,10 @@ let
       defaultModel = modelName;
       defaultThinkingLevel = "off";
       compaction = {
-        reserveTokens = 2048;
-        keepRecentTokens = 2048;
+        reserveTokens = maxTokens;
+        keepRecentTokens = maxTokens;
       };
-      branchSummary.reserveTokens = 2048;
+      branchSummary.reserveTokens = maxTokens;
       enableInstallTelemetry = false;
       enableAnalytics = false;
     }
@@ -140,30 +133,38 @@ in
   services.openssh.enable = lib.mkForce false;
 
   systemd.services.local-model = {
-    description = "Local Qwen3.5-4B inference";
+    description = "Local ${profile.name} inference";
     wantedBy = [ "multi-user.target" ];
     serviceConfig = {
-      ExecStart = lib.escapeShellArgs [
-        "${pkgs.llama-cpp}/bin/llama-server"
-        "--model"
-        (toString model)
-        "--alias"
-        modelName
-        "--ctx-size"
-        (toString contextSize)
-        "--parallel"
-        "1"
-        "--host"
-        "127.0.0.1"
-        "--port"
-        "8080"
-        "--offline"
-        "--no-webui"
-        "--no-agent"
-        "--jinja"
-        "--chat-template-kwargs"
-        (builtins.toJSON { enable_thinking = false; })
-      ];
+      ExecStart = lib.escapeShellArgs (
+        [
+          "${pkgs.llama-cpp}/bin/llama-server"
+          "--model"
+          (toString model)
+          "--alias"
+          modelName
+          "--ctx-size"
+          (toString contextSize)
+          "--parallel"
+          "1"
+          "--host"
+          "127.0.0.1"
+          "--port"
+          "8080"
+          "--offline"
+          "--no-webui"
+          "--no-agent"
+          "--jinja"
+          "--chat-template-kwargs"
+          (builtins.toJSON { enable_thinking = false; })
+        ]
+        ++ lib.optionals (profile.threads != null) [
+          "--threads"
+          (toString profile.threads)
+          "--threads-batch"
+          (toString profile.threads)
+        ]
+      );
       DynamicUser = true;
       NoNewPrivileges = true;
       ProtectSystem = "strict";
@@ -181,7 +182,7 @@ in
       ];
       IPAddressDeny = "any";
       IPAddressAllow = "localhost";
-      MemoryMax = "75%";
+      MemoryMax = profile.memoryMax;
       Restart = "on-failure";
       RestartSec = 5;
     };

@@ -5,6 +5,7 @@
   nixosConfigurations,
   agentMode ? false,
   localModel ? false,
+  localProfile ? null,
   guestPackages ? { },
 }:
 forAllSystems (
@@ -295,9 +296,12 @@ forAllSystems (
           };
         }
         ++ lib.optional localModel {
-          virtualisation.vmVariant = import ./local-agent-vm.nix {
-            agentPackage = inputs.llm-agents.packages.${system}.pi;
-          };
+          virtualisation.vmVariant = import ./local-agent-vm.nix (
+            {
+              agentPackage = inputs.llm-agents.packages.${system}.pi;
+            }
+            // lib.optionalAttrs (localProfile != null) { profile = localProfile; }
+          );
         };
       };
       vmRunner = "${vmConfig.config.virtualisation.vmVariant.system.build.vm}/bin/run-${name}-vm";
