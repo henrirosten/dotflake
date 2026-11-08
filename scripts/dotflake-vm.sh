@@ -2,7 +2,7 @@
 set -euo pipefail
 umask 077
 
-ram_mb=8192
+ram_mb=@defaultRamMb@
 cpus=@defaultCpus@
 project=.
 instance=@defaultInstance@
@@ -70,7 +70,7 @@ Usage: @launcherName@ [--instance NAME] [--project PATH] [OPTIONS]
                    Provision codex, claude or copilot (repeatable; default: none)
   --auth-replace   Replace existing guest credentials for selected providers
   --exec CMD       Run CMD on the console after boot
-  --ram-mb MB      RAM in MiB (default: 8192)
+  --ram-mb MB      RAM in MiB (default: @defaultRamMb@)
   --cpus N         Number of CPUs (default: @defaultCpus@)
   --network MODE   offline: no network device; online: filtered internet
                    (default: @defaultNetwork@)
@@ -89,7 +89,7 @@ For repeated providers, the last --auth wins. Missing defaults are skipped.
 EOF
     if [ "$backend" = local ]; then
       cat <<'EOF'
-This launcher runs local-agent (Pi with a local Qwen3.5-4B) unless --exec is
+This launcher runs local-agent (Pi with a local @localModelName@) unless --exec is
 given. It rejects --auth and --auth-replace, and dotflake-vm cannot use its
 instances.
 EOF

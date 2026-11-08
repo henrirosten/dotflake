@@ -107,6 +107,7 @@
           mkPkgs
           agentVms
           localAgentVms
+          nocturnLocalAgentVms
           ;
         agentSystem = nixosConfigurations.generic.pkgs.stdenv.hostPlatform.system;
       };
@@ -131,6 +132,19 @@
           ;
         agentMode = true;
         localModel = true;
+        guestPackages = packages;
+      };
+
+      nocturnLocalAgentVms = import ./flake/apps-vm.nix {
+        inherit
+          inputs
+          forAllSystems
+          mkPkgs
+          nixosConfigurations
+          ;
+        agentMode = true;
+        localModel = true;
+        localProfile = (import ./flake/local-model-profiles.nix).nocturn;
         guestPackages = packages;
       };
 

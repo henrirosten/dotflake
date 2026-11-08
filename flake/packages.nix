@@ -3,12 +3,14 @@
   mkPkgs,
   agentVms ? { },
   localAgentVms ? { },
+  nocturnLocalAgentVms ? { },
   agentSystem ? null,
 }:
 forAllSystems (
   system:
   let
     pkgs = mkPkgs system;
+    localProfiles = import ./local-model-profiles.nix;
     hostTools = [ pkgs.git ];
     guestTools = with pkgs; [
       git
@@ -21,6 +23,10 @@ forAllSystems (
         name,
         vm,
         localModel ? false,
+        localModelName ? localProfiles.laptop.name,
+        defaultInstance ? if localModel then "local" else "default",
+        defaultCpus ? if localModel then "4" else "2",
+        defaultRamMb ? "8192",
       }:
       let
         replacements = {
@@ -31,8 +37,12 @@ forAllSystems (
           vmRunner = "${vm}/bin/run-generic-vm";
           launcherName = name;
           backend = if localModel then "local" else "cloud";
-          defaultCpus = if localModel then "4" else "2";
-          defaultInstance = if localModel then "local" else "default";
+          inherit
+            localModelName
+            defaultInstance
+            defaultCpus
+            defaultRamMb
+            ;
           defaultNetwork = if localModel then "offline" else "online";
           defaultExec = if localModel then "local-agent" else "";
         };
@@ -94,6 +104,15 @@ forAllSystems (
       name = "dotflake-local-vm";
       vm = localAgentVms.${system}.generic-vm;
       localModel = true;
+    };
+    dotflake-local-vm-nocturn = mkAgentLauncher {
+      name = "dotflake-local-vm-nocturn";
+      vm = nocturnLocalAgentVms.${system}.generic-vm;
+      localModel = true;
+      localModelName = localProfiles.nocturn.name;
+      defaultInstance = "local-nocturn";
+      defaultCpus = "8";
+      defaultRamMb = "40960";
     };
   }
 )

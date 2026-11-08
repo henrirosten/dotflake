@@ -296,6 +296,45 @@ the guest with its history, including any committed secrets. Pi sessions persist
 `~/.local/share/dotflake/local-agent` in the guest. If Pi cannot reach the
 model, check `journalctl -u local-model`.
 
+### Local Model Agent VM on Nocturn
+
+`dotflake-local-vm-nocturn` runs the same local agent with Qwen3.6-35B-A3B
+(UD-Q4_K_M): a 32,768-token context, 8,192 output tokens, eight inference
+threads and a 32 GiB model-service cap. Its defaults suit nocturn: instance
+`local-nocturn`, 40,960 MiB RAM, 8 vCPUs and no network device. Leave at least
+8 GiB of host memory outside the guest. Pi is ready about a minute after
+launch, and the model generates roughly 8 to 14 output tokens per second.
+Model settings for both launchers are in `flake/local-model-profiles.nix`.
+
+The agent works on a Git repository checked out on nocturn; bring it up to date
+there before starting. Connect to nocturn with SSH and start `tmux`, which the
+nocturn configuration installs: the guest console is the terminal, and a dropped
+connection would otherwise stop the VM without a guest shutdown. Then, from a
+dotflake checkout on nocturn:
+
+```bash
+# Once, while online: fetch the VM and the model (about 22.1 GB).
+nix build .#dotflake-local-vm-nocturn
+# Start the agent on the project.
+nix run --offline .#dotflake-local-vm-nocturn -- --project /path/to/project
+```
+
+Work with Pi in the guest, then run `agent-export` and `sudo poweroff`. The
+model server listens only on the guest's loopback interface and no ports are
+forwarded, so it is not reachable from the LAN. Pi settings persist per
+instance, so this launcher uses its own instance; name it when importing and
+reviewing on nocturn, then fetch the result from your workstation:
+
+```bash
+# Nocturn, in /path/to/project:
+dotflake-agent import --instance local-nocturn
+dotflake-agent review --instance local-nocturn
+git merge <commit-id-from-review>
+# Workstation, in your clone of the project:
+git fetch ssh://nocturn/path/to/project <branch>
+git merge --ff-only FETCH_HEAD
+```
+
 ## Standalone Home Manager (Ubuntu and similar)
 
 Install Nix (automatic mode):

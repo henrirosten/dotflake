@@ -23,4 +23,18 @@ let
 in
 {
   inherit laptop;
+  # A 40 GiB guest leaves 8 GiB outside the model service for the task and OS.
+  nocturn = laptop // {
+    name = "Qwen3.6-35B-A3B";
+    quant = "UD-Q4_K_M";
+    model = {
+      name = "Qwen3.6-35B-A3B-UD-Q4_K_M.gguf";
+      url = "https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF/resolve/a483e9e6cbd595906af30beda3187c2663a1118c/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf";
+      sha256 = "ac0e2c1189e055faa36eff361580e79c5bd6f8e76bffb4ce547f167d53e31a61";
+    };
+    contextSize = 32768;
+    maxTokens = 8192;
+    threads = 8;
+    memoryMax = "32G";
+  };
 }

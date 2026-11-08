@@ -1,6 +1,7 @@
 {
   inputs,
   outputs,
+  pkgs,
   stateVersion,
   ...
 }:
@@ -30,6 +31,9 @@ in
   };
 
   security.sudo.wheelNeedsPassword = false;
+
+  # Keeps dotflake-local-vm-nocturn sessions alive across dropped SSH connections.
+  environment.systemPackages = [ pkgs.tmux ];
 
   system.autoUpgrade.dates = "weekly";
 
