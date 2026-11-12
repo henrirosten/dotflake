@@ -38,23 +38,24 @@ in
   #
   # If GPU hangs recur (symptoms: `GPU HANG`, `device wedged`, or
   # `Failed to reset chip` in dmesg; display frozen until power-cycle),
-  # captured diagnostics land in /var/log/gpu-hang/<UTC-timestamp>/ —
-  # see modules/nixos/gpu-hang-capture.nix.
+  # captured diagnostics land in unique UTC-stamped directories under
+  # /var/log/gpu-hang/ — see modules/nixos/gpu-hang-capture.nix.
   #
   # Escalation options to try one at a time after confirming kernel and
   # linux-firmware are current (each requires a rebuild + reboot):
-  #   - i915.enable_guc=0   Disable GuC submission, fall back to legacy
-  #                         execbuf. Directly targets the failure mode
-  #                         where GuC-based reset times out
-  #                         (`Failed to reset GuC, ret = -110`). Downside:
-  #                         loses HuC-based video decode/encode acceleration.
-  #                         Do NOT combine with modules that require HuC.
-  #   - i915.reset=1        Restrict i915 to per-engine resets only (no
-  #                         full-chip reset). Worth trying if chip-wide
-  #                         reset is the problematic path.
-  # Last incident: 2026-04-15, one-off, Chrome GPU process (rcs0) was the
-  # trigger. Prior 6-day boot had zero hangs, so none of the above are
-  # applied by default.
+  #   - i915.enable_guc=2   Disable GuC submission while keeping HuC loading.
+  #                         Tests host submission instead of GuC scheduling;
+  #                         GuC firmware still runs for HuC authentication.
+  #   - i915.enable_guc=0   Disable both GuC submission and HuC loading.
+  #                         Broader isolation test if enable_guc=2 still hangs;
+  #                         HuC-dependent media features become unavailable.
+  # reset=1 means full-GPU resets, not per-engine-only resets. The default
+  # reset=2 already attempts engine resets; do not change it alongside GuC.
+  # Parameter definitions: https://github.com/torvalds/linux/blob/master/drivers/gpu/drm/i915/i915_params.c
+  # Last incident: 2026-11-12, kernel 7.3.3, GuC 70.49.4: rcs0 engine reset
+  # failed, followed by Xwayland GPU HANG, failed chip reset, and a wedge.
+  # The initial trigger is unknown. Keep these as experiments, not a
+  # confirmed fix; see README for capturing diagnostics.
   boot.kernelParams = [
     "i915.enable_psr=0"
     "i915.enable_dc=0"

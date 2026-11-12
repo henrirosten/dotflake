@@ -117,7 +117,7 @@ let
       # drivers that reuse the same error wording.
       check_gpu_wedge() {
         journalctl -b -k --no-pager -g 'i915' 2>/dev/null |
-          grep -qE "device wedged|Failed to reset chip"
+          grep -E "device wedged|Failed to reset chip" >/dev/null
       }
 
       collect_debug() {

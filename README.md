@@ -76,6 +76,23 @@ nixos-version --configuration-revision
 ```
 This reports the git revision (or dirty revision) of the flake the system was built from.
 
+### GPU Hang Diagnostics
+
+Graphical hosts save i915 hang diagnostics in unique UTC-stamped directories
+under `/var/log/gpu-hang/`. Read captures with sudo; they contain GPU memory
+and journal data.
+
+To take a manual capture before rebooting:
+
+```bash
+sudo gpu-hang-capture --once
+```
+
+The command prints the capture directory and exits nonzero if the capture is
+incomplete. Inspect the saved files before relying on them. The sysfs dump
+does not survive a reboot; saved captures do. After recovery,
+`gnome-freeze-debug -1` shows the previous boot's journal.
+
 ## Remote Deployment
 
 `scripts/deploy.sh` deploys to remote hosts by resolving their IP via MAC address lookup (ARP cache, falling back to nmap subnet scan).
