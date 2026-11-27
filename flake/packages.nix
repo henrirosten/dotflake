@@ -115,4 +115,46 @@ forAllSystems (
       defaultRamMb = "40960";
     };
   }
+  // pkgs.lib.optionalAttrs (system == "x86_64-linux") {
+    dotflake-inkling-nocturn =
+      let
+        model = pkgs.fetchurl {
+          name = "Inkling-2-Mini-UD-Q2_K_XL.gguf";
+          url = "https://huggingface.co/unsloth/Inkling-2-Mini-GGUF/resolve/8078d149286eec7193795413b9e0643da6d11fa1/Mainline_Support/Inkling-2-Mini-UD-Q2_K_XL.gguf_file";
+          hash = "sha256-tChBYI6jgN3eWj8RJQgTVxKKPHG4DQBiRt5OMSkvxsE=";
+        };
+        # The benchmark used this CPU build, which supports Inkling's looped architecture.
+        runtime = pkgs.stdenvNoCC.mkDerivation (finalAttrs: {
+          pname = "llama-cpp-inkling";
+          version = "b12757";
+          src = pkgs.fetchurl {
+            url = "https://github.com/ggml-org/llama.cpp/releases/download/${finalAttrs.version}/llama-${finalAttrs.version}-bin-ubuntu-x64.tar.gz";
+            hash = "sha256-meNMxqOfOv2nNdQ9dtFdbq0il0BsycDPQht3H9OhqEo=";
+          };
+          nativeBuildInputs = [ pkgs.autoPatchelfHook ];
+          buildInputs = [
+            pkgs.openssl
+            pkgs.stdenv.cc.cc.lib
+          ];
+          installPhase = ''
+            runHook preInstall
+            install -Dm755 llama-cli "$out/bin/llama-cli"
+            # The CPU backends are loaded dynamically from the executable directory.
+            cp -P libggml.so* libggml-base.so* libggml-cpu-*.so \
+              libllama.so* libllama-common.so* libllama-cli-impl.so \
+              libllama-server-impl.so libmtmd.so* "$out/bin/"
+            runHook postInstall
+          '';
+        });
+      in
+      pkgs.writeShellApplication {
+        name = "dotflake-inkling-nocturn";
+        text = ''
+          exec ${runtime}/bin/llama-cli --model ${model} --offline \
+            --ctx-size 32768 --threads 8 --threads-batch 8 \
+            --reasoning on --reasoning-effort low --reasoning-budget 256 \
+            --n-predict 2048 "$@"
+        '';
+      };
+  }
 )

@@ -352,6 +352,35 @@ git fetch ssh://nocturn/path/to/project <branch>
 git merge --ff-only FETCH_HEAD
 ```
 
+## Standalone Inkling on Nocturn
+
+`dotflake-inkling-nocturn` runs Inkling 2 Mini `UD-Q2_K_XL` through `llama-cli`
+directly on the Nocturn host with your user permissions. Its internal HTTP
+server listens on loopback. The defaults are eight CPU threads, a 32K context, a
+2,048-token output limit, and low reasoning effort with a 256-token reasoning
+budget. The model download is about 9.1 GB. In the Nocturn benchmark, the model
+server peaked at about 13 GiB RSS.
+
+Build from the dotflake checkout on Nocturn while online.
+
+```bash
+mkdir -p "$HOME/.local/state/dotflake"
+nix build .#dotflake-inkling-nocturn \
+  --out-link "$HOME/.local/state/dotflake/inkling-nocturn"
+```
+
+The build link keeps the launcher and model in the Nix store. Run it directly
+from any directory, including offline after the checkout is updated. Rerun the
+build when you want to refresh the link.
+
+```bash
+inkling="$HOME/.local/state/dotflake/inkling-nocturn/bin/dotflake-inkling-nocturn"
+# Start an interactive chat.
+"$inkling"
+# Ask a single question.
+"$inkling" --single-turn -p 'Explain Python context managers.'
+```
+
 ## Standalone Home Manager (Ubuntu and similar)
 
 Install Nix (automatic mode):
